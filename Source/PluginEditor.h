@@ -123,6 +123,10 @@ public:
     void stepPreset (int delta);
     void loadPreset (int index);
     void setWindowHeight (int h);
+    static constexpr int numSizes = 3;             // 60 % (défaut d'origine) / 75 % / 100 %
+    static int sizeHeight (int idx);
+    void addSizeItems (juce::PopupMenu&);          // Plugin size : tailles + « Default size (new windows) »
+    bool handleSizeResult (int r);
     // learnA / learnB >= 0 : clic droit sur une commande (MIDI Learn en tête du menu)
     void showModeMenu (juce::Component* target, int learnA = -1, int learnB = -1);
     void showSizeMenu (juce::Component* target, int learnIdx = -1);

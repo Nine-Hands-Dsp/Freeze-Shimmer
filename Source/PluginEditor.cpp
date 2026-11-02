@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "BinaryData.h"
+#include "../WigaWindowSize.h"
 
 using namespace juce;
 
@@ -331,7 +332,11 @@ FreezeShimmerEditor::FreezeShimmerEditor (FreezeShimmerProcessor& p)
                      roundToInt ((double) art::heightMax * aspect), art::heightMax);
     getConstrainer()->setFixedAspectRatio (aspect);
     setOpaque (true);                      // anti-gel : l'hôte ne redessine jamais ce qui est derrière la fenêtre
-    const int h0 = jlimit (art::heightPct50, art::heightMax, proc.uiHeight.load());
+    // taille mémorisée dans le projet pour cette instance si elle existe (uiHeight >= 50 %),
+    // sinon celle choisie dans le menu « Default size (new windows) »
+    const int saved = proc.uiHeight.load();
+    const int h0 = saved >= art::heightPct50 ? jmin (saved, art::heightMax)
+                                              : sizeHeight (WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes));
     setSize (roundToInt ((double) h0 * aspect), h0);
     rebuildCaches();
     lastPresetSeen = proc.presetIndex.load();
@@ -382,6 +387,41 @@ void FreezeShimmerEditor::loadPreset (int index)
 void FreezeShimmerEditor::stepPreset (int delta)
 {
     loadPreset ((proc.presetIndex.load() + delta + fsp::kNumPresets) % fsp::kNumPresets);
+}
+
+int FreezeShimmerEditor::sizeHeight (int idx)
+{
+    const int h[numSizes] = { art::heightPct50, art::heightPct75, art::heightPct100 };
+    return h[jlimit (0, numSizes - 1, idx)];
+}
+
+// Plugin size : taille de cette fenêtre + taille par défaut des nouvelles fenêtres (comme Octopus)
+void FreezeShimmerEditor::addSizeItems (PopupMenu& sizes)
+{
+    const char* names[numSizes] = { "60 %", "75 %", "100 %" };
+    const int def = WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes);
+    const int curH = getHeight();
+    PopupMenu defSizes;
+    for (int i = 0; i < numSizes; ++i)
+    {
+        sizes.addItem (301 + i, String (names[i]) + (i == def ? "  (default)" : ""), true, std::abs (curH - sizeHeight (i)) < 8);
+        defSizes.addItem (320 + i, names[i], true, i == def);
+    }
+    sizes.addSeparator();
+    sizes.addSubMenu ("Default size (new windows)", defSizes);
+}
+
+bool FreezeShimmerEditor::handleSizeResult (int r)
+{
+    if (r >= 301 && r < 301 + numSizes)      setWindowHeight (sizeHeight (r - 301));
+    else if (r == 304)                       setWindowHeight (art::heightPct60);
+    else if (r >= 320 && r < 320 + numSizes)
+    {
+        WigaWindowSize::setDefaultIndex (JucePlugin_Name, r - 320);   // toutes les nouvelles fenêtres de ce plugin
+        setWindowHeight (sizeHeight (r - 320));                      // et cette fenêtre tout de suite
+    }
+    else return false;
+    return true;
 }
 
 void FreezeShimmerEditor::setWindowHeight (int h)
@@ -503,12 +543,9 @@ void FreezeShimmerEditor::showModeMenu (Component* target, int learnA, int learn
     PopupMenu presets, sizes;
     for (int i = 0; i < fsp::kNumPresets; ++i)
         presets.addItem (200 + i, String (i + 1) + "  " + fsp::kPresets[i].name, true, proc.presetIndex.load() == i);
-    const int curH = getHeight();
-    sizes.addItem (301, "60 % (default)", true, std::abs (curH - art::heightPct50)  < 8);
-    sizes.addItem (302, "75 %",   true, std::abs (curH - art::heightPct75)  < 8);
-    sizes.addItem (303, "100 %",  true, std::abs (curH - art::heightPct100) < 8);
+    addSizeItems (sizes);
     m.addSubMenu ("Presets d'usine", presets);
-    m.addSubMenu ("Window size", sizes);
+    m.addSubMenu ("Plugin size", sizes);
     m.addSeparator();
     m.addSubMenu ("Scene (shimmer)", scenes);
     m.addSubMenu ("Mode freeze", modes);
@@ -534,31 +571,22 @@ void FreezeShimmerEditor::showModeMenu (Component* target, int learnA, int learn
         else if (r == 40)            showMidiMap();
         else if (r >= 100 && r <= 116) setChoice ("midichan", r - 100);
         else if (r >= 200 && r < 200 + fsp::kNumPresets) loadPreset (r - 200);
-        else if (r == 301) setWindowHeight (art::heightPct50);
-        else if (r == 304) setWindowHeight (art::heightPct60);
-        else if (r == 302) setWindowHeight (art::heightPct75);
-        else if (r == 303) setWindowHeight (art::heightPct100);
+        else handleSizeResult (r);
     });
 }
 
 void FreezeShimmerEditor::showSizeMenu (Component* target, int learnIdx)
 {
-    const int curH = getHeight();
     PopupMenu m;
     if (learnIdx >= 0) addLearnSection (m, FreezeShimmerProcessor::learnDef (learnIdx).name, learnIdx);
-    m.addSectionHeader ("Window size");
-    m.addItem (301, "60 % (default)", true, std::abs (curH - art::heightPct50)  < 8);
-    m.addItem (302, "75 %",   true, std::abs (curH - art::heightPct75)  < 8);
-    m.addItem (303, "100 %",  true, std::abs (curH - art::heightPct100) < 8);
+    m.addSectionHeader ("Plugin size");
+    addSizeItems (m);
     m.addSeparator();
     addMidiLearnSubMenu (m);
     m.showMenuAsync (PopupMenu::Options().withTargetComponent (target), [this] (int r)
     {
         if (handleLearnResult (r)) return;
-        if (r == 301) setWindowHeight (art::heightPct50);
-        else if (r == 304) setWindowHeight (art::heightPct60);
-        else if (r == 302) setWindowHeight (art::heightPct75);
-        else if (r == 303) setWindowHeight (art::heightPct100);
+        handleSizeResult (r);
     });
 }
 

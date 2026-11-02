@@ -79,7 +79,7 @@ sous Linux et publie les zips (`FreezeShimmer-win64.zip`, `FreezeShimmer-macos.z
 
 - **Bouton MODE** (haut) : clic = scène suivante (**INTERGALACTIC** vert · **OFF-WORLD** orange · **ETHERDUST** rouge) ;
   `Maj`+clic = mode freeze suivant (**LATCH · MOMENT · AUTO**) ; maintien ~1 s = bascule page A/B ;
-  **molette** = preset suivant / précédent ; clic droit = menu complet (presets, taille, scène, mode, page, bypass, canal MIDI, table MIDI).
+  **molette** = preset suivant / précédent ; clic droit = menu complet (presets, taille (*Plugin size*), scène, mode, page, bypass, canal MIDI, table MIDI).
 - **LED unique** (au-dessus de MODE) : éteinte en bypass · **bleu fixe** pédale active · **bleu clignotant** freeze actif.
 - **Footswitch** (bas) : **appui maintenu** = freeze · **double-clic** = arrête le freeze (voir ci-dessous). Bypass : clic droit → menu, ou CC 105.
 - **Double-clic** sur un bouton = valeur par défaut. Glisser verticalement, ou molette.
@@ -160,8 +160,8 @@ Molette sur le bouton MODE, ou clic droit → *Presets d'usine*, ou *Program Cha
 
 ## Fenêtre
 
-- Ouverture à **50 % = 390 × 495 px** (taille minimale, jamais en dessous). Visuel net : image 1× à la taille par défaut, image 2× au-delà. **Clic droit sur la pédale** → *Window size* : Default, 60 %, 75 %, 100 %.
-- Redimensionnable à la souris par le coin, de 50 % (taille minimale = taille par défaut) à 150 % ; la taille est **mémorisée dans le projet**.
+- Ouverture à **50 % = 390 × 495 px** (taille minimale, jamais en dessous). Visuel net : image 1× à la taille par défaut, image 2× au-delà. **Clic droit sur la pédale** (ou sur un potard, ou menu MODE / footswitch) → *Plugin size* : 60 % / 75 % / 100 % pour cette fenêtre (« (default) » marque la taille par défaut choisie), et *Default size (new windows)* pour choisir la taille d'ouverture de toutes les nouvelles fenêtres de Freeze Shimmer (réglage enregistré dans `Studio Wiga/Freeze Shimmer/settings.xml` du dossier de données de l'utilisateur, comme Octopus).
+- Redimensionnable à la souris par le coin, de 50 % (taille minimale = taille par défaut) à 150 % ; la taille est **mémorisée dans le projet** : une instance déjà ouverte rouvre à sa taille, une nouvelle instance s'ouvre à la taille par défaut choisie.
 
 ---
 
@@ -205,3 +205,4 @@ Le visuel « Freeze Shimmer / Studio Wiga » reste la propriété de son auteur.
 
 - v1.1.1 : menu de taille de fenêtre : « 60 % (default) », 75 %, 100 % (plus de taille en pixels)
 - v1.2.0 : MIDI Learn au clic droit sur chaque commande (Clear MIDI, assignations sauvegardées avec le projet)
+- v1.3.0 : clic droit > *Plugin size* > *Default size (new windows)* : taille par défaut des nouvelles fenêtres au choix (60 / 75 / 100 %), comme dans Octopus
