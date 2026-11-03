@@ -46,7 +46,7 @@ FreezeShimmerProcessor::LearnDef FreezeShimmerProcessor::learnDef (int i)
 
 void FreezeShimmerProcessor::resetMidiMap()
 {
-    for (int i = 0; i < kNumLearn; ++i) ccMap[i].store (learnDef (i).defaultCC);
+    for (int i = 0; i < kNumLearn; ++i) ccMap[i].store (-1);
 }
 
 // Anti-gel v2 (Studio Wiga) : jamais d'appel à l'hôte (setValueNotifyingHost) ni d'allocation depuis le
@@ -203,7 +203,7 @@ void FreezeShimmerProcessor::handleMidi (juce::MidiBuffer& midi)
         else if (ctl == kLearnFMode)          queueNormalised (kQFMode, (float) juce::jmin (2, val / 43) / 2.0f);
         else if (ctl == kLearnEngage)         queueNormalised (kQEngage, val >= 64 ? 1.0f : 0.0f);
         else if (ctl == kLearnRelease)        { if (val >= 64) applyCommand (cmdRelease); }
-        else if (ctl == kLearnFreeze || (ctl < 0 && cc == fsp::kCcSustain))   // pédale de sustain = footswitch (si CC64 libre)
+        else if (ctl == kLearnFreeze)
         {
             const bool down = val >= 64;
             if (down != sustainDown) { sustainDown = down; footswitch (down); }
@@ -344,9 +344,16 @@ void FreezeShimmerProcessor::setStateInformation (const void* data, int size)
             uiPage.store ((int) vt.getProperty ("uiPage", 0));
             uiHeight.store (juce::jlimit (493, 1479, (int) vt.getProperty ("uiHeight", 493)));
             presetIndex.store (juce::jlimit (0, fsp::kNumPresets - 1, (int) vt.getProperty ("preset", 0)));
-            // assignations MIDI Learn (ancien projet sans ces propriétés : CC fixes d'avant)
+            // assignations MIDI Learn (ancien projet sans ces propriétés : non assignées)
+            // v1.3.1 : ancienne table d'usine intacte (CC 20-32, 102-106) = jamais modifiée : on la vide
+            bool factory = true;
             for (int i = 0; i < kNumLearn; ++i)
-                ccMap[i].store (juce::jlimit (-1, 127, (int) vt.getProperty (juce::String ("cc_") + learnDef (i).id, learnDef (i).defaultCC)));
+            {
+                const auto key = juce::String ("cc_") + learnDef (i).id;
+                if (! vt.hasProperty (key) || (int) vt.getProperty (key) != learnDef (i).legacyCC) { factory = false; break; }
+            }
+            for (int i = 0; i < kNumLearn; ++i)
+                ccMap[i].store (factory ? -1 : juce::jlimit (-1, 127, (int) vt.getProperty (juce::String ("cc_") + learnDef (i).id, -1)));
             apvts.replaceState (vt);
         }
 }

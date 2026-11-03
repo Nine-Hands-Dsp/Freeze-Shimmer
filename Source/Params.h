@@ -8,7 +8,7 @@ struct Info
 {
     const char* id;        // identifiant APVTS
     const char* name;      // nom affiché (étiquette de la pédale)
-    int   cc;              // numéro de CC MIDI (-1 = aucun)
+    int   cc;              // ancien CC d'usine (v1.2 à v1.3.0) : sert seulement à reconnaître l'ancienne table MIDI
     float def;             // valeur par défaut (0..1)
 };
 
@@ -31,13 +31,12 @@ static const Info kKnobs[] =
 };
 static constexpr int kNumKnobs = (int) (sizeof (kKnobs) / sizeof (kKnobs[0]));
 
-// CC de commande
+// anciens CC d'usine des commandes (v1.2 à v1.3.0) : plus assignés par défaut depuis la v1.3.1 (MIDI Learn uniquement)
 static constexpr int kCcScene   = 102;  //  0-42 Intergalactic | 43-85 Off-World | 86-127 Etherdust
 static constexpr int kCcFMode   = 103;  //  0-42 Latch | 43-85 Moment | 86-127 Auto
 static constexpr int kCcFreeze  = 104;  //  >= 64 : footswitch enfoncé
 static constexpr int kCcEngage  = 105;  //  >= 64 : effet actif, < 64 : bypass
 static constexpr int kCcRelease = 106;  //  >= 64 : relâche le freeze (Latch / Auto)
-static constexpr int kCcSustain = 64;   //  pédale de sustain = footswitch
 
 static const juce::StringArray kSceneNames { "INTERGALACTIC", "OFF-WORLD", "ETHERDUST" };
 static const juce::StringArray kModeNames  { "LATCH", "MOMENT", "AUTO" };

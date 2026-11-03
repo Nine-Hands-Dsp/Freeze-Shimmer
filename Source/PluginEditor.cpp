@@ -517,7 +517,7 @@ void FreezeShimmerEditor::addMidiLearnSubMenu (PopupMenu& m)
         midi.addItem (1000 + i, "Learn: " + String (FreezeShimmerProcessor::learnDef (i).name) + " (" + ccLabel (i) + ")", true, lt == i);
     midi.addSeparator();
     if (lt >= 0) midi.addItem (1200, "Cancel MIDI learn");
-    midi.addItem (1201, "Reset MIDI to defaults (CC 20-32, 102-106)");
+    midi.addItem (1201, "Clear all MIDI assignments");
     m.addSubMenu ("MIDI Learn", midi);
 }
 
@@ -604,7 +604,6 @@ void FreezeShimmerEditor::showMidiMap()
     t << "\n" << ccLabel (FreezeShimmerProcessor::kLearnScene)   << "  =  Scene (0-42 / 43-85 / 86-127)"
       << "\n" << ccLabel (FreezeShimmerProcessor::kLearnFMode)   << "  =  Mode freeze LATCH / MOMENT / AUTO"
       << "\n" << ccLabel (FreezeShimmerProcessor::kLearnFreeze)  << "  =  Footswitch freeze (>= 64)"
-      << "\nCC " << fsp::kCcSustain << "  =  Pedale de sustain = footswitch (si CC 64 non assigne)"
       << "\n" << ccLabel (FreezeShimmerProcessor::kLearnEngage)  << "  =  Effet actif (>= 64) / bypass"
       << "\n" << ccLabel (FreezeShimmerProcessor::kLearnRelease) << "  =  Relache le freeze"
       << "\nProgram Change 0-9  =  Preset d'usine";

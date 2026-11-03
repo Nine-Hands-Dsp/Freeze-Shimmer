@@ -60,10 +60,10 @@ public:
     std::atomic<int> presetIndex { 0 };
     void applyPreset (int index);
 
-    // ---- MIDI Learn (v1.2) : toutes les commandes, anciens CC fixes = assignations par défaut ----
+    // ---- MIDI Learn (v1.2) : toutes les commandes ; v1.3.1 : aucun CC assigné par défaut ----
     // 0..12 = potards (fsp::kKnobs), puis scène, mode freeze, footswitch, engage, relâche du freeze
     enum LearnType { learnContinuous, learnToggle, learnSelector, learnFootswitch, learnTrigger };
-    struct LearnDef { const char* id; const char* name; int defaultCC; int type; };
+    struct LearnDef { const char* id; const char* name; int legacyCC; int type; };   // legacyCC : ancien CC d'usine
     static constexpr int kLearnScene = fsp::kNumKnobs, kLearnFMode = fsp::kNumKnobs + 1, kLearnFreeze = fsp::kNumKnobs + 2,
                          kLearnEngage = fsp::kNumKnobs + 3, kLearnRelease = fsp::kNumKnobs + 4;
     static constexpr int kNumLearn = fsp::kNumKnobs + 5;
@@ -71,7 +71,7 @@ public:
     std::atomic<int> ccMap[kNumLearn];          // numéro de CC de chaque commande, -1 = non assigné
     std::atomic<int> learnTarget { -1 };        // commande en attente d'un CC (-1 = pas de learn)
     std::atomic<int> lastLearned { -1 };        // dernière commande apprise (lue et remise à -1 par la fenêtre)
-    void resetMidiMap();
+    void resetMidiMap();                        // efface toutes les assignations
 
     juce::AudioProcessorValueTreeState apvts;
 

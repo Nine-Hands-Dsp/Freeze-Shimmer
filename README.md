@@ -81,7 +81,7 @@ sous Linux et publie les zips (`FreezeShimmer-win64.zip`, `FreezeShimmer-macos.z
   `Maj`+clic = mode freeze suivant (**LATCH · MOMENT · AUTO**) ; maintien ~1 s = bascule page A/B ;
   **molette** = preset suivant / précédent ; clic droit = menu complet (presets, taille (*Plugin size*), scène, mode, page, bypass, canal MIDI, table MIDI).
 - **LED unique** (au-dessus de MODE) : éteinte en bypass · **bleu fixe** pédale active · **bleu clignotant** freeze actif.
-- **Footswitch** (bas) : **appui maintenu** = freeze · **double-clic** = arrête le freeze (voir ci-dessous). Bypass : clic droit → menu, ou CC 105.
+- **Footswitch** (bas) : **appui maintenu** = freeze · **double-clic** = arrête le freeze (voir ci-dessous). Bypass : clic droit → menu, ou MIDI (après MIDI Learn).
 - **Double-clic** sur un bouton = valeur par défaut. Glisser verticalement, ou molette.
 
 ### Scènes (shimmer)
@@ -110,7 +110,7 @@ En bypass, les queues de réverb s'éteignent naturellement.
 ### Ligne d'état
 
 Sous l'encadré : dernier paramètre touché et sa valeur lisible (%, s, ms, Hz…), état *scène · mode · page · FROZEN*,
-et à droite la valeur **MIDI** correspondante (`CC24 = 70`). Elle passe en vert quand la valeur vient d'un message MIDI entrant. La valeur affichée à gauche prend la couleur de l'étiquette du potard : blanc (page A), bleu (page B : RVB MIX, DELAY, LAYER, DEPTH, RATE).
+et à droite la valeur **MIDI** correspondante (`CC24 = 70` si un CC est appris). Elle passe en vert quand la valeur vient d'un message MIDI entrant. La valeur affichée à gauche prend la couleur de l'étiquette du potard : blanc (page A), bleu (page B : RVB MIX, DELAY, LAYER, DEPTH, RATE).
 
 ---
 
@@ -119,19 +119,9 @@ et à droite la valeur **MIDI** correspondante (`CC24 = 70`). Elle passe en vert
 Tous les paramètres sont aussi **automatisables** depuis le DAW (utile car certains hôtes n'envoient pas le MIDI aux effets —
 voir *MIDI learn* / mapping de paramètres de votre DAW). Canal réglable (menu clic droit, **OMNI** par défaut).
 
-**MIDI Learn** (v1.2) : clic droit sur un potard (paramètre de la page affichée), le bouton MODE (scène, mode freeze) ou le footswitch (freeze, relâche) -> « MIDI Learn », puis bouger la pédale d'expression / appuyer sur le bouton MIDI ; « Clear MIDI » retire l'assignation. Le sous-menu *MIDI Learn* liste toutes les commandes et « Reset MIDI to defaults » revient au tableau ci-dessous. Les assignations sont sauvegardées avec le projet ; la pédale de sustain (CC 64) reste le footswitch tant que CC 64 n'est pas assigné à une autre commande.
+Aucun CC assigné par défaut : clic droit > MIDI > Learn.
 
-| CC | Fonction | CC | Fonction |
-|---|---|---|---|
-| 20 | DRY | 28 | VOICE |
-| 21 | EFFECT | 29 | DEPTH |
-| 22 | BLEND | 30 | TONE |
-| 23 | RVB MIX | 31 | RATE |
-| 24 | TIME | 32 | GLISS |
-| 25 | DELAY | 102 | Scène (0-42 / 43-85 / 86-127) |
-| 26 | SPEED | 103 | Mode freeze LATCH / MOMENT / AUTO |
-| 27 | LAYER | 104 · **64** | Footswitch (≥ 64 enfoncé) — 64 = pédale de sustain |
-| 105 | Effet actif ≥ 64 / bypass | 106 | Relâche le freeze |
+**MIDI Learn** (v1.2) : clic droit sur un potard (paramètre de la page affichée), le bouton MODE (scène, mode freeze) ou le footswitch (freeze, relâche) -> « MIDI Learn », puis bouger la pédale d'expression / appuyer sur le bouton MIDI ; « Clear MIDI » retire l'assignation. Le sous-menu *MIDI Learn* liste toutes les commandes (potards, scène 0-42 / 43-85 / 86-127, mode freeze LATCH / MOMENT / AUTO, footswitch ≥ 64 enfoncé, effet actif ≥ 64 / bypass, relâche du freeze) et « Clear all MIDI assignments » efface toutes les assignations. Les assignations sont sauvegardées avec le projet.
 
 *Program Change* 0 à 9 = preset d'usine.
 
@@ -206,3 +196,4 @@ Le visuel « Freeze Shimmer / Studio Wiga » reste la propriété de son auteur.
 - v1.1.1 : menu de taille de fenêtre : « 60 % (default) », 75 %, 100 % (plus de taille en pixels)
 - v1.2.0 : MIDI Learn au clic droit sur chaque commande (Clear MIDI, assignations sauvegardées avec le projet)
 - v1.3.0 : clic droit > *Plugin size* > *Default size (new windows)* : taille par défaut des nouvelles fenêtres au choix (60 / 75 / 100 %), comme dans Octopus
+- v1.3.1 : plus aucun CC MIDI assigné par défaut (tout passe par le MIDI Learn)
