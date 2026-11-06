@@ -80,7 +80,7 @@ private:
     void setNormalised (const char* id, float v01);
     void applyCommand (int cmd);
 
-    // Anti-gel v2 (Studio Wiga) : valeurs demandées par le thread audio (MIDI, commandes du footswitch),
+    // Anti-gel v2 (NINE HANDS | DSP) : valeurs demandées par le thread audio (MIDI, commandes du footswitch),
     // transmises à l'hôte par le timer du processeur (60 Hz, thread message)
     void timerCallback() override;
     static constexpr int kQScene = fsp::kNumKnobs, kQFMode = fsp::kNumKnobs + 1, kQEngage = fsp::kNumKnobs + 2;

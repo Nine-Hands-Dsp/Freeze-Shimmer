@@ -49,7 +49,7 @@ void FreezeShimmerProcessor::resetMidiMap()
     for (int i = 0; i < kNumLearn; ++i) ccMap[i].store (-1);
 }
 
-// Anti-gel v2 (Studio Wiga) : jamais d'appel à l'hôte (setValueNotifyingHost) ni d'allocation depuis le
+// Anti-gel v2 (NINE HANDS | DSP) : jamais d'appel à l'hôte (setValueNotifyingHost) ni d'allocation depuis le
 // thread audio. Le MIDI et les commandes du footswitch mettent la valeur en file ; ce timer (thread
 // message) la transmet au DAW et à la fenêtre, et charge les presets demandés par Program Change.
 const char* FreezeShimmerProcessor::queuedId (int i)

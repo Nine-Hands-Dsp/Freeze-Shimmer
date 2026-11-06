@@ -32,7 +32,7 @@ else()
 endif()
 
 juce_add_plugin(FreezeShimmer
-  COMPANY_NAME               "Studio Wiga"
+  COMPANY_NAME               "NINE HANDS | DSP"
   BUNDLE_ID                  com.studiowiga.freezeshimmer
   PRODUCT_NAME               "Freeze Shimmer"
   PLUGIN_MANUFACTURER_CODE   Wiga

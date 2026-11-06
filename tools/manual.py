@@ -1,4 +1,4 @@
-# FREEZE SHIMMER (Studio Wiga) - notice PDF bilingue (anglais puis francais), illustree avec le rendu reel du plugin.
+# FREEZE SHIMMER (NINE HANDS | DSP) - notice PDF bilingue (anglais puis francais), illustree avec le rendu reel du plugin.
 # Usage : python3 tools/manual.py <fichier PDF de sortie>
 # Images : tools/manual_assets/ (couverture, facade annotee et ligne d'etat reprises de la notice v1.2.0).
 # La capture des menus du clic droit de la v1.2.0 (« Window size », « Reset MIDI to defaults (CC ...) ») a ete retiree :
@@ -61,7 +61,7 @@ T = {
  lang="ENGLISH", sub="Frozen Cosmic Reverb &nbsp;·&nbsp; VST3 &nbsp;·&nbsp; Windows &amp; macOS", ver="User manual &nbsp;·&nbsp; version " + VERSION,
  foot="User manual",
  intro_t="1. Presentation",
- intro=["<b>Freeze Shimmer</b> is a VST3 effect by Studio Wiga that merges two pedal ideas into one instrument: a <b>shimmer / cosmic reverb</b> inspired by the Electro-Harmonix Pico Shimmer (3 scenes, delay, modulation) and a <b>freeze / sound retainer</b> inspired by the Pico Deep Freeze (infinite sustain, layers, glissando).",
+ intro=["<b>Freeze Shimmer</b> is a VST3 effect by NINE HANDS | DSP that merges two pedal ideas into one instrument: a <b>shimmer / cosmic reverb</b> inspired by the Electro-Harmonix Pico Shimmer (3 scenes, delay, modulation) and a <b>freeze / sound retainer</b> inspired by the Pico Deep Freeze (infinite sustain, layers, glissando).",
         "Play a chord, hold the footswitch and the plugin captures what it hears. Release: the sound keeps floating indefinitely while you play over it. A double-click on the footswitch gently lets it go. The engines are written from scratch to reproduce the behaviour described in the pedal manuals, not a bit-for-bit copy."],
  feat_h="Main features",
  feat=["Shimmer reverb: 8-line FDN with the octave fed back into the loop, 3 scenes (INTERGALACTIC, OFF-WORLD, ETHERDUST), echo up to 950 ms, modulation.",
@@ -74,7 +74,7 @@ T = {
  inst_t="2. Installation",
  inst=[("Windows 11", "Unzip <b>FreezeShimmer-win64.zip</b> (GitHub Actions artifact or Release) and run <b>Install-FreezeShimmer.ps1</b> (right-click &gt; Run with PowerShell): it copies <b>Freeze Shimmer.vst3</b> into <b>C:\\Program Files\\Common Files\\VST3</b>. A standalone <b>Freeze Shimmer.exe</b> is also included."),
        ("macOS", "Unzip <b>FreezeShimmer-macos.zip</b> (universal binary, macOS 10.13 or later), then double-click <b>FreezeShimmer-VST3.pkg</b> (all users) or <b>install-freezeshimmer-mac.command</b> (copies to ~/Library/Audio/Plug-Ins/VST3, removes the quarantine). If macOS blocks it: right-click &gt; Open. On macOS, Ctrl + click also opens the right-click menu."),
-       ("Reaper", "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. The plugin appears as <b>Freeze Shimmer</b> by <b>Studio Wiga</b>.")],
+       ("Reaper", "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. The plugin appears as <b>Freeze Shimmer</b> by <b>NINE HANDS | DSP</b>.")],
  ov_t="3. Interface overview",
  ov_hdr=["#", "Element", "Role"],
  ov=[["1", "DRY", "Level of your direct signal."], ["2", "EFFECT", "Level of the frozen sound."],
@@ -127,7 +127,7 @@ T = {
      ["Factory presets", "Program Change 0-9 = presets 1 to 10 (always active, nothing to learn)"]],
  st_cap="Status line during MIDI Learn: waiting, then confirmation.",
  win_t="7. Window and status line",
- win=["The window opens at the default size and can never be made smaller than 60 %. Right-click the pedal &gt; <b>Plugin size</b>: <b>60 %</b>, <b>75 %</b> or <b>100 %</b> resizes this window, with <b>(default)</b> shown next to the default size you chose; you can also drag the corner up to 150 %. At the bottom of the same menu, <b>Default size (new windows)</b> chooses the size at which every new Freeze Shimmer window opens (a setting shared by all instances and saved on the computer, in Studio Wiga/Freeze Shimmer/settings.xml of your user data folder); the open window takes that size at once.",
+ win=["The window opens at the default size and can never be made smaller than 60 %. Right-click the pedal &gt; <b>Plugin size</b>: <b>60 %</b>, <b>75 %</b> or <b>100 %</b> resizes this window, with <b>(default)</b> shown next to the default size you chose; you can also drag the corner up to 150 %. At the bottom of the same menu, <b>Default size (new windows)</b> chooses the size at which every new Freeze Shimmer window opens (a setting shared by all instances and saved on the computer, in NINE HANDS | DSP/Freeze Shimmer/settings.xml of your user data folder); the open window takes that size at once.",
       "The size of each window (chosen in the menu or with the corner) is saved with your project and stays the priority for that instance when the project is reopened; a new instance opens at the default size.",
       "The status line under the FREEZE SHIMMER plate shows the last parameter touched with its readable value (%, s, ms, Hz), the state scene · mode · page · FROZEN, and on the right the learnt CC with the matching MIDI value (e.g. <b>CC12 = 70</b>; <b>noCC</b> while the control is not assigned). It turns green when the value came from MIDI; the value on the left is white for page A and blue for page B. MIDI Learn messages appear there in green."],
  rc_hdr=["Right-click menu (MODE / footswitch)", "Use"],
@@ -171,12 +171,12 @@ T = {
        ["MIDI", "MIDI Learn on 18 functions, no CC assigned by default, channel OMNI / 1-16; assignments saved with the project"],
        ["Window", "60 % / 75 % / 100 % (Plugin size), default size of new windows to choose, resizable by the corner up to 150 %, never smaller than 60 %"],
        ["Stability", "Windows anti-freeze v2: the interface never blocks the host"], ["Version", VERSION]],
- legal="Inspired by the Electro-Harmonix Pico Shimmer and Pico Deep Freeze; independent project, not affiliated with Electro-Harmonix. Built with JUCE (GPL-3.0). Artwork © Studio Wiga."),
+ legal="Inspired by the Electro-Harmonix Pico Shimmer and Pico Deep Freeze; independent project, not affiliated with Electro-Harmonix. Built with JUCE (GPL-3.0). Artwork © NINE HANDS | DSP."),
 "fr": dict(
  lang="FRANÇAIS", sub="Frozen Cosmic Reverb &nbsp;·&nbsp; VST3 &nbsp;·&nbsp; Windows &amp; macOS", ver="Notice d'utilisation &nbsp;·&nbsp; version " + VERSION,
  foot="Notice d'utilisation",
  intro_t="1. Présentation",
- intro=["<b>Freeze Shimmer</b> est un effet VST3 Studio Wiga qui réunit deux idées de pédales en un seul instrument : une <b>reverb shimmer / cosmique</b> inspirée de l'Electro-Harmonix Pico Shimmer (3 scènes, retard, modulation) et un <b>freeze / sound retainer</b> inspiré de la Pico Deep Freeze (sustain infini, couches, glissando).",
+ intro=["<b>Freeze Shimmer</b> est un effet VST3 NINE HANDS | DSP qui réunit deux idées de pédales en un seul instrument : une <b>reverb shimmer / cosmique</b> inspirée de l'Electro-Harmonix Pico Shimmer (3 scènes, retard, modulation) et un <b>freeze / sound retainer</b> inspiré de la Pico Deep Freeze (sustain infini, couches, glissando).",
         "Joue un accord, maintiens le footswitch et le plugin capture ce qu'il entend. Relâche : le son flotte indéfiniment pendant que tu joues par-dessus. Un double-clic sur le footswitch le laisse partir en douceur. Les moteurs sont écrits de zéro pour reproduire le comportement décrit dans les manuels des pédales, pas une copie bit à bit."],
  feat_h="Points forts",
  feat=["Reverb shimmer : FDN à 8 lignes avec l'octave réinjectée dans la boucle, 3 scènes (INTERGALACTIC, OFF-WORLD, ETHERDUST), écho jusqu'à 950 ms, modulation.",
@@ -189,7 +189,7 @@ T = {
  inst_t="2. Installation",
  inst=[("Windows 11", "Dézippe <b>FreezeShimmer-win64.zip</b> (artefact GitHub Actions ou Release) et lance <b>Install-FreezeShimmer.ps1</b> (clic droit &gt; Exécuter avec PowerShell) : il copie <b>Freeze Shimmer.vst3</b> dans <b>C:\\Program Files\\Common Files\\VST3</b>. Une application autonome <b>Freeze Shimmer.exe</b> est aussi fournie."),
        ("macOS", "Dézippe <b>FreezeShimmer-macos.zip</b> (binaire universel, macOS 10.13 ou plus), puis double-clique sur <b>FreezeShimmer-VST3.pkg</b> (tous les utilisateurs) ou sur <b>install-freezeshimmer-mac.command</b> (copie dans ~/Library/Audio/Plug-Ins/VST3, retire la quarantaine). Si macOS bloque : clic droit &gt; Ouvrir. Sous macOS, Ctrl + clic ouvre aussi le menu du clic droit."),
-       ("Reaper", "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Le plugin apparaît sous le nom <b>Freeze Shimmer</b>, fabricant <b>Studio Wiga</b>.")],
+       ("Reaper", "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Le plugin apparaît sous le nom <b>Freeze Shimmer</b>, fabricant <b>NINE HANDS | DSP</b>.")],
  ov_t="3. Vue d'ensemble de l'interface",
  ov_hdr=["#", "Élément", "Rôle"],
  ov=[["1", "DRY", "Niveau du son direct."], ["2", "EFFECT", "Niveau du son figé."],
@@ -242,7 +242,7 @@ T = {
      ["Presets d'usine", "Program Change 0-9 = presets 1 à 10 (toujours actif, rien à apprendre)"]],
  st_cap="Ligne d'état pendant le MIDI Learn : attente, puis confirmation.",
  win_t="7. Fenêtre et ligne d'état",
- win=["La fenêtre s'ouvre à la taille par défaut et ne peut jamais être plus petite que 60 %. Clic droit sur la pédale &gt; <b>Plugin size</b> : <b>60 %</b>, <b>75 %</b> ou <b>100 %</b> redimensionne cette fenêtre, et <b>(default)</b> est indiqué à côté de la taille par défaut choisie ; tu peux aussi tirer le coin jusqu'à 150 %. En bas du même menu, <b>Default size (new windows)</b> choisit la taille d'ouverture de toutes les nouvelles fenêtres de Freeze Shimmer (réglage commun à toutes les instances, enregistré sur l'ordinateur, dans Studio Wiga/Freeze Shimmer/settings.xml du dossier de données de l'utilisateur) ; la fenêtre ouverte prend aussitôt cette taille.",
+ win=["La fenêtre s'ouvre à la taille par défaut et ne peut jamais être plus petite que 60 %. Clic droit sur la pédale &gt; <b>Plugin size</b> : <b>60 %</b>, <b>75 %</b> ou <b>100 %</b> redimensionne cette fenêtre, et <b>(default)</b> est indiqué à côté de la taille par défaut choisie ; tu peux aussi tirer le coin jusqu'à 150 %. En bas du même menu, <b>Default size (new windows)</b> choisit la taille d'ouverture de toutes les nouvelles fenêtres de Freeze Shimmer (réglage commun à toutes les instances, enregistré sur l'ordinateur, dans NINE HANDS | DSP/Freeze Shimmer/settings.xml du dossier de données de l'utilisateur) ; la fenêtre ouverte prend aussitôt cette taille.",
       "La taille de chaque fenêtre (choisie dans le menu ou au coin) est enregistrée avec le projet et reste prioritaire pour cette instance à la réouverture du projet ; une nouvelle instance s'ouvre à la taille par défaut.",
       "La ligne d'état sous l'encadré FREEZE SHIMMER affiche le dernier paramètre touché avec sa valeur lisible (%, s, ms, Hz), l'état scène · mode · page · FROZEN, et à droite le CC appris avec la valeur MIDI correspondante (ex. <b>CC12 = 70</b> ; <b>noCC</b> tant que la commande n'est pas assignée). Elle passe en vert quand la valeur vient du MIDI ; la valeur de gauche est blanche pour la page A et bleue pour la page B. Les messages du MIDI Learn s'y affichent en vert."],
  rc_hdr=["Menu du clic droit (MODE / footswitch)", "Rôle"],
@@ -286,7 +286,7 @@ T = {
        ["MIDI", "MIDI Learn sur 18 fonctions, aucun CC assigné par défaut, canal OMNI / 1-16 ; affectations sauvegardées avec le projet"],
        ["Fenêtre", "60 % / 75 % / 100 % (Plugin size), taille par défaut des nouvelles fenêtres au choix, redimensionnable par le coin jusqu'à 150 %, jamais sous 60 %"],
        ["Stabilité", "Anti-gel v2 de la fenêtre sous Windows : l'interface ne bloque jamais l'hôte"], ["Version", VERSION]],
- legal="Inspiré des Electro-Harmonix Pico Shimmer et Pico Deep Freeze ; projet indépendant, sans lien avec Electro-Harmonix. Construit avec JUCE (GPL-3.0). Visuel © Studio Wiga."),
+ legal="Inspiré des Electro-Harmonix Pico Shimmer et Pico Deep Freeze ; projet indépendant, sans lien avec Electro-Harmonix. Construit avec JUCE (GPL-3.0). Visuel © NINE HANDS | DSP."),
 }
 
 CUR = {"foot": ""}
@@ -339,7 +339,7 @@ def deco(c, doc):
     c.setFillColor(ACC); c.rect(0, A4[1] - 4.5 * mm, A4[0], 4.5 * mm, stroke=0, fill=1)
     c.setFont("Pop", 7.5); c.setFillColor(GREY)
     foot = T["fr"]["foot"] if doc.page > HALF[0] else T["en"]["foot"]
-    c.drawString(18 * mm, 10 * mm, "Freeze Shimmer (Studio Wiga) · " + foot + " · v" + VERSION)
+    c.drawString(18 * mm, 10 * mm, "Freeze Shimmer (NINE HANDS | DSP) · " + foot + " · v" + VERSION)
     c.drawRightString(A4[0] - 18 * mm, 10 * mm, str(doc.page))
     c.restoreState()
 
@@ -350,7 +350,7 @@ def cover_bg(c, doc):
 
 HALF = [10 ** 6]   # numero de la couverture francaise (fixe quand elle est dessinee)
 doc = BaseDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm, bottomMargin=18 * mm,
-                      title="Freeze Shimmer - User manual / Notice v" + VERSION, author="Studio Wiga")
+                      title="Freeze Shimmer - User manual / Notice v" + VERSION, author="NINE HANDS | DSP")
 doc.addPageTemplates([PageTemplate(id="cover", frames=[Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="fc")], onPage=cover_bg),
                       PageTemplate(id="p", frames=[Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="f")], onPage=deco)])
 en = section("en"); fr = section("fr")

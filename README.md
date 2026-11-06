@@ -1,6 +1,6 @@
 # Freeze Shimmer — VST3 (Windows 11 & macOS)
 
-Plugin d'effet **VST3** « Frozen Cosmic Reverb » par **Studio Wiga**, qui réunit dans une seule interface :
+Plugin d'effet **VST3** « Frozen Cosmic Reverb » par **NINE HANDS | DSP**, qui réunit dans une seule interface :
 
 - un **shimmer / cosmic reverb** inspiré de la *Pico Shimmer* (3 scènes, retard, modulation) ;
 - un **freeze / sound retainer** inspiré de la *Pico Deep Freeze* (sustain infini, couches, glissando).
@@ -150,7 +150,7 @@ Molette sur le bouton MODE, ou clic droit → *Presets d'usine*, ou *Program Cha
 
 ## Fenêtre
 
-- Ouverture à **50 % = 390 × 495 px** (taille minimale, jamais en dessous). Visuel net : image 1× à la taille par défaut, image 2× au-delà. **Clic droit sur la pédale** (ou sur un potard, ou menu MODE / footswitch) → *Plugin size* : 60 % / 75 % / 100 % pour cette fenêtre (« (default) » marque la taille par défaut choisie), et *Default size (new windows)* pour choisir la taille d'ouverture de toutes les nouvelles fenêtres de Freeze Shimmer (réglage enregistré dans `Studio Wiga/Freeze Shimmer/settings.xml` du dossier de données de l'utilisateur, comme Octopus).
+- Ouverture à **50 % = 390 × 495 px** (taille minimale, jamais en dessous). Visuel net : image 1× à la taille par défaut, image 2× au-delà. **Clic droit sur la pédale** (ou sur un potard, ou menu MODE / footswitch) → *Plugin size* : 60 % / 75 % / 100 % pour cette fenêtre (« (default) » marque la taille par défaut choisie), et *Default size (new windows)* pour choisir la taille d'ouverture de toutes les nouvelles fenêtres de Freeze Shimmer (réglage enregistré dans `NINE HANDS | DSP/Freeze Shimmer/settings.xml` du dossier de données de l'utilisateur, comme Octopus).
 - Redimensionnable à la souris par le coin, de 50 % (taille minimale = taille par défaut) à 150 % ; la taille est **mémorisée dans le projet** : une instance déjà ouverte rouvre à sa taille, une nouvelle instance s'ouvre à la taille par défaut choisie.
 
 ---
@@ -159,7 +159,7 @@ Molette sur le bouton MODE, ou clic droit → *Presets d'usine*, ou *Program Cha
 
 ```
 CMakeLists.txt
-Assets/background.jpg            visuel Studio Wiga (recadré, fond sombre, couleurs rehaussées, INPUT/OUTPUT)
+Assets/background.jpg            visuel NINE HANDS | DSP (recadré, fond sombre, couleurs rehaussées, INPUT/OUTPUT)
 Source/
   PluginProcessor.*              audio, MIDI, paramètres
   PluginEditor.*                 interface : boutons vectoriels, MODE, footswitch, ligne d'état
@@ -191,7 +191,7 @@ Tests DSP en local (Linux/macOS/WSL) : `g++ -O2 -std=c++17 -ISource/dsp tests/ds
 ## Licence
 
 JUCE est utilisé sous licence **AGPLv3/GPLv3** : ce projet est distribué sous **GPL-3.0** (voir `LICENSE`).
-Le visuel « Freeze Shimmer / Studio Wiga » reste la propriété de son auteur.
+Le visuel « Freeze Shimmer / NINE HANDS | DSP » reste la propriété de son auteur.
 
 - v1.1.1 : menu de taille de fenêtre : « 60 % (default) », 75 %, 100 % (plus de taille en pixels)
 - v1.2.0 : MIDI Learn au clic droit sur chaque commande (Clear MIDI, assignations sauvegardées avec le projet)
