@@ -16,6 +16,13 @@ placée sous l'encadré « FREEZE SHIMMER ».
 
 ---
 
+<p align="center">
+  <a href="https://github.com/Nine-Hands-Dsp/Freeze-Shimmer/releases/latest/download/FreezeShimmer-VST3-Windows.zip"><img alt="Télécharger pour Windows" src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger-Windows-0078D6?style=for-the-badge"></a>
+  <a href="https://github.com/Nine-Hands-Dsp/Freeze-Shimmer/releases/latest/download/FreezeShimmer-VST3-macOS.zip"><img alt="Télécharger pour macOS" src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger-macOS-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <br>
+  <a href="https://github.com/Nine-Hands-Dsp/Freeze-Shimmer/releases/latest"><img alt="Dernière version" src="https://img.shields.io/github/v/release/Nine-Hands-Dsp/Freeze-Shimmer?label=derni%C3%A8re%20version&color=919496"></a>
+</p>
+
 ## Installation (utilisateur)
 
 1. Récupérez `FreezeShimmer-win64.zip` dans **Actions → dernier build → Artifacts** (ou dans **Releases** si vous avez poussé un tag `vX.Y.Z`).
