@@ -9,158 +9,106 @@ namespace
 const char* const kPrimary[7]   = { "dry", "effect", "blend",  "time",  "speed", "voice", "tone" };
 const char* const kSecondary[7] = { "dry", "effect", "rvbmix", "delay", "layer", "depth", "rate" };
 const Colour kBlue (0xff38bdf8);
+const Colour kAccent (0xff7fd4ff);                  // accent du plugin (givre)
+const Colour kInk (0xffeef2f7);
 
-Font makeFont (float size, bool bold)
+// « CLEAN PLATE » -> « Clean Plate »
+String niceName (const char* raw)
 {
-    return Font (FontOptions (size, bold ? Font::bold : Font::plain));
+    String s (String (raw).toLowerCase()), out;
+    bool up = true;
+    for (auto c : s) { out << (up ? String::charToString (CharacterFunctions::toUpperCase (c)) : String::charToString (c)); up = (c == ' '); }
+    return out;
+}
+
+// chemin d'un texte avec espacement des lettres, centré en (x, y), tourné de rot degrés
+Path textPath (const Typeface::Ptr& face, float em, float track, float x, float y, float rot, const String& s)
+{
+    const Font font (FontOptions (face).withPointHeight (em));
+    float total = 0.0f;
+    for (int i = 0; i < s.length(); ++i)
+        total += GlyphArrangement::getStringWidth (font, String::charToString (s[i])) + (i > 0 ? track : 0.0f);
+    const float base = (font.getAscent() - font.getDescent()) * 0.5f;
+    GlyphArrangement ga;
+    float px = -total * 0.5f;
+    for (int i = 0; i < s.length(); ++i)
+    {
+        const String ch = String::charToString (s[i]);
+        ga.addLineOfText (font, ch, px, base);
+        px += GlyphArrangement::getStringWidth (font, ch) + track;
+    }
+    Path p; ga.createPath (p);
+    p.applyTransform (AffineTransform::rotation (rot * MathConstants<float>::pi / 180.0f).translated (x, y));
+    return p;
 }
 }
 
 //==============================================================================
-// Potentiomètre vectoriel
-void PedalLook::drawRotarySlider (Graphics& g, int x, int y, int w, int h, float pos,
-                                  float startAngle, float endAngle, Slider& s)
+// Lampe
+bool Lamp::hitTest (int x, int y)
 {
-    const Rectangle<float> b ((float) x, (float) y, (float) w, (float) h);
-    const float R = jmin (b.getWidth(), b.getHeight()) * 0.5f;
-    const auto c = b.getCentre();
-    const bool sec = (bool) s.getProperties()["secondary"];
-    const bool hot = s.isMouseOverOrDragging();
-    const float rot = startAngle + pos * (endAngle - startAngle);   // angle du potentiomètre
-    const float twoPi = juce::MathConstants<float>::twoPi;
-    auto disc = [] (Point<float> p, float r) { return Rectangle<float> (r * 2.0f, r * 2.0f).withCentre (p); };
-
-    const float skirtR = R * 0.97f, capR = R * 0.80f;
-    const Point<float> cs (c.x, c.y + R * 0.07f);     // la jupe est légèrement plus basse (effet cylindre)
-
-    // ombre portée douce
-    g.setGradientFill (ColourGradient (Colour (0xb0000000), cs.x, cs.y + R * 0.06f, Colour (0x00000000), cs.x, cs.y + R * 1.12f, true));
-    g.fillEllipse (disc ({ cs.x, cs.y + R * 0.05f }, R * 1.10f));
-
-    // jupe cylindrique striée
-    g.setGradientFill (ColourGradient (Colour (0xff2a2d33), cs.x, cs.y - skirtR, Colour (0xff050506), cs.x, cs.y + skirtR, false));
-    g.fillEllipse (disc (cs, skirtR));
-    // stries : elles tournent avec le potentiomètre ; éclairage fixe (haut-gauche)
-    {
-        const int n = 48;
-        for (int i = 0; i < n; ++i)
-        {
-            const float a = rot + twoPi * (float) i / (float) n;       // position réelle de la strie
-            const float lit = 0.5f + 0.5f * std::cos (a + 0.6f);        // 1 = face à la lumière
-            const float r1 = skirtR * 0.82f, r2 = skirtR * 0.985f;
-            g.setColour (Colour::fromFloatRGBA (1.0f, 1.0f, 1.0f, 0.06f + 0.30f * lit * lit));
-            g.drawLine (cs.x + std::sin (a) * r1, cs.y - std::cos (a) * r1,
-                        cs.x + std::sin (a) * r2, cs.y - std::cos (a) * r2, R * 0.034f);
-            const float a2 = a + twoPi / (float) n * 0.5f;
-            g.setColour (Colour::fromFloatRGBA (0.0f, 0.0f, 0.0f, 0.55f));
-            g.drawLine (cs.x + std::sin (a2) * r1, cs.y - std::cos (a2) * r1,
-                        cs.x + std::sin (a2) * r2, cs.y - std::cos (a2) * r2, R * 0.03f);
-        }
-    }
-    // liseré bleu en page secondaire
-    if (sec)
-    {
-        g.setColour (kBlue.withAlpha (hot ? 0.95f : 0.80f));
-        g.drawEllipse (disc (cs, skirtR), R * 0.04f);
-    }
-    // capuchon noir brossé
-    g.setGradientFill (ColourGradient (Colour (0xff383b41), c.x - capR * 0.5f, c.y - capR * 0.7f,
-                                       Colour (0xff060607), c.x + capR * 0.5f, c.y + capR * 0.8f, false));
-    g.fillEllipse (disc (c, capR));
-    g.setColour (Colour (0x66ffffff));
-    g.drawEllipse (disc (c, capR), R * 0.016f);
-    // reflets brossés fixes (deux secteurs opposés)
-    {
-        Path p1, p2;
-        p1.addPieSegment (disc (c, capR * 0.96f), -0.40f, 0.20f, 0.0f);
-        p2.addPieSegment (disc (c, capR * 0.96f), juce::MathConstants<float>::pi - 0.40f, juce::MathConstants<float>::pi + 0.20f, 0.0f);
-        g.setColour (Colour (0x18ffffff));
-        g.fillPath (p1);
-        g.fillPath (p2);
-    }
-    // repère
-    {
-        const float r1 = capR * 0.18f, r2 = capR * 0.92f;
-        Path p;
-        p.startNewSubPath (c.x + std::sin (rot) * r1, c.y - std::cos (rot) * r1);
-        p.lineTo (c.x + std::sin (rot) * r2, c.y - std::cos (rot) * r2);
-        g.setColour (sec ? Colour (0xff8fdcff) : Colour (0xfff4f7fb));
-        g.strokePath (p, PathStrokeType (R * 0.085f, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-}
-
-
-namespace
-{
-// halo circulaire : dégradé radial multi-arrêts, alpha → 0 exactement au bord (jamais rogné)
-void fillHalo (juce::Graphics& g, juce::Point<float> c, float rCore, float rOuter, juce::Colour col, float peak)
-{
-    juce::ColourGradient gr (col.withAlpha (peak), c.x, c.y, col.withAlpha (0.0f), c.x + rOuter, c.y, true);
-    const double k = (double) (rCore / rOuter);
-    gr.addColour (k,              col.withAlpha (peak * 0.85f));
-    gr.addColour (k + (1.0 - k) * 0.25, col.withAlpha (peak * 0.50f));
-    gr.addColour (k + (1.0 - k) * 0.55, col.withAlpha (peak * 0.20f));
-    gr.addColour (k + (1.0 - k) * 0.80, col.withAlpha (peak * 0.05f));
-    g.setGradientFill (gr);
-    g.fillEllipse (juce::Rectangle<float> (rOuter * 2.0f, rOuter * 2.0f).withCentre (c));
-}
-}
-
-//==============================================================================
-// Bouton MODE : LED + gestes
-bool ModeButton::hitTest (int x, int y)
-{
+    if (! clickable) return false;
     const auto c = getLocalBounds().getCentre().toFloat();
-    return c.getDistanceFrom (Point<float> ((float) x, (float) y)) <= coreRadius();
+    const float R = (float) getWidth() / kPad * 0.40f;
+    return c.getDistanceFrom (Point<float> ((float) x, (float) y)) <= R;
 }
 
-void ModeButton::paint (Graphics& g)
+bool Lamp::step (float target)
 {
-    // LED complète (recouvre celle de l'image) : éteinte en bypass, bleu fixe pédale active, bleu clignotant en freeze
+    level += (target - level) * (target > level ? 0.45f : 0.28f);
+    if (level < 0.003f) level = 0.0f;
+    if (level > 0.997f) level = 1.0f;
+    if (std::abs (level - drawnLevel) > 0.004f) { drawnLevel = level; return true; }
+    return false;
+}
+
+void Lamp::paint (Graphics& g)
+{
+    if (level <= 0.003f) return;
     const auto c = getLocalBounds().toFloat().getCentre();
-    const float R = coreRadius();
-    const bool on = owner.getBool ("engage") && ! (owner.proc.frozenState.load() && ! blinkPhase);
-
-    // chemise métallique
-    g.setGradientFill (ColourGradient (Colour (0xffb9c3cf), c.x - R * 0.4f, c.y - R * 0.5f, Colour (0xff3b4350), c.x + R * 0.5f, c.y + R * 0.6f, false));
-    g.fillEllipse (Rectangle<float> (R * 1.70f, R * 1.70f).withCentre (c));
-    g.setColour (Colour (0xff0b1018));
-    g.fillEllipse (Rectangle<float> (R * 1.38f, R * 1.38f).withCentre (c));
-
-    if (on)
+    const float u = (float) getWidth() / (layout::ledS * kPad);        // pixels par unité
+    const float R = (float) getWidth() * 0.5f;
+    // halo sur la façade (dosé par Glow) : la lentille elle-même reste à pleine intensité
+    const float peak = 0.55f * level * owner.glowK();
+    const Colour col (60, 170, 255);
+    ColourGradient gr (col.withAlpha (peak), c.x, c.y, col.withAlpha (0.0f), c.x + R, c.y, true);
+    gr.addColour (0.133, col.withAlpha (peak * 0.88f));
+    gr.addColour (0.267, col.withAlpha (peak * 0.64f));
+    gr.addColour (0.453, col.withAlpha (peak * 0.35f));
+    gr.addColour (0.667, col.withAlpha (peak * 0.18f));
+    gr.addColour (0.85,  col.withAlpha (peak * 0.06f));
+    g.setGradientFill (gr);
+    g.fillEllipse (Rectangle<float> (R * 2.0f, R * 2.0f).withCentre (c));
+    if (lensOn.isValid())
     {
-        fillHalo (g, c, R * 0.9f, (float) getWidth() * 0.5f, kBlue, 0.70f);
-        g.setGradientFill (ColourGradient (Colour (0xffe6f8ff), c.x - R * 0.2f, c.y - R * 0.25f, kBlue.darker (0.3f), c.x, c.y + R * 0.7f, true));
-        g.fillEllipse (Rectangle<float> (R * 1.2f, R * 1.2f).withCentre (c));
-    }
-    else
-    {
-        g.setGradientFill (ColourGradient (Colour (0xff2b3340), c.x - R * 0.2f, c.y - R * 0.25f, Colour (0xff0d1219), c.x, c.y + R * 0.7f, true));
-        g.fillEllipse (Rectangle<float> (R * 1.2f, R * 1.2f).withCentre (c));
+        g.setOpacity (level);
+        g.setImageResamplingQuality (Graphics::highResamplingQuality);
+        g.drawImage (lensOn, Rectangle<float> (layout::ledS * u, layout::ledS * u).withCentre (c));
+        g.setOpacity (1.0f);
     }
 }
 
-void ModeButton::mouseDown (const MouseEvent& e)
+void Lamp::mouseDown (const MouseEvent& e)
 {
     longFired = false;
-    if (e.mods.isPopupMenu()) { owner.showModeMenu (this, FreezeShimmerProcessor::kLearnScene, FreezeShimmerProcessor::kLearnFMode); longFired = true; return; }
+    if (e.mods.isPopupMenu())
+    {
+        owner.showMainMenu (FreezeShimmerProcessor::kLearnScene, FreezeShimmerProcessor::kLearnFMode, "MODE button");
+        longFired = true;
+        return;
+    }
     startTimer (800);
 }
 
-void ModeButton::timerCallback()
-{
-    stopTimer();
-    longFired = true;
-    owner.togglePage();   // maintien ~1 s : page secondaire (comme la pédale)
-}
+void Lamp::owner_togglePage() { owner.togglePage(); }   // maintien ~1 s : page secondaire (comme la pédale)
 
-void ModeButton::mouseWheelMove (const MouseEvent&, const MouseWheelDetails& w)
+void Lamp::mouseWheelMove (const MouseEvent&, const MouseWheelDetails& w)
 {
     if (w.deltaY > 0.0f)      owner.stepPreset (1);
     else if (w.deltaY < 0.0f) owner.stepPreset (-1);
 }
 
-void ModeButton::mouseUp (const MouseEvent& e)
+void Lamp::mouseUp (const MouseEvent& e)
 {
     stopTimer();
     if (longFired || e.mods.isPopupMenu()) return;
@@ -173,28 +121,50 @@ void ModeButton::mouseUp (const MouseEvent& e)
 bool FootSwitch::hitTest (int x, int y)
 {
     const auto c = getLocalBounds().getCentre().toFloat();
-    return c.getDistanceFrom (Point<float> ((float) x, (float) y)) <= coreRadius();
+    return c.getDistanceFrom (Point<float> ((float) x, (float) y)) <= (float) getWidth() * (layout::footR * 1.35f / layout::fsS);
+}
+
+bool FootSwitch::step (float target)
+{
+    level += (target - level) * (target > level ? 0.45f : 0.28f);
+    if (level < 0.003f) level = 0.0f;
+    if (level > 0.997f) level = 1.0f;
+    if (std::abs (level - drawnLevel) > 0.004f) { drawnLevel = level; return true; }
+    return false;
 }
 
 void FootSwitch::paint (Graphics& g)
 {
     const auto c = getLocalBounds().toFloat().getCentre();
-    const float R = coreRadius();
-    if (owner.proc.frozenState.load())
+    const float u = (float) getWidth() / layout::fsS;                 // pixels par unité
+    if (level > 0.003f)
     {
-        const float pulse = 0.55f + 0.25f * std::sin ((float) Time::getMillisecondCounter() * 0.004f);
-        fillHalo (g, c, R * 0.95f, (float) getWidth() * 0.5f, Colour (0xff4fd8ff), pulse);
+        // anneau et halo d'Octopus : traits de halo (largeur 20 -> 3, pas 1,5) à 0,075 x Glow, puis anneau plein et filet clair
+        const float ringR = layout::footR * 1.0775f * u, ringW = layout::footR * 0.0674f * u * 0.5f;
+        const Colour col (88, 200, 255);
+        const float k = ringR / (layout::footR * 1.0775f * u) * 0.639f * u;     // unités de largeur -> pixels
+        for (float t = 20.0f; t >= 3.0f; t -= 1.5f)
+        {
+            g.setColour (col.withAlpha (0.075f * owner.glowK() * level));
+            g.drawEllipse (Rectangle<float> (ringR * 2.0f, ringR * 2.0f).withCentre (c), t * k);
+        }
+        g.setColour (col.withAlpha (0.85f * level));
+        g.drawEllipse (Rectangle<float> (ringR * 2.0f, ringR * 2.0f).withCentre (c), ringW * 2.0f);
+        g.setColour (Colour (215, 240, 255).withAlpha (0.90f * level));
+        g.drawEllipse (Rectangle<float> (ringR * 2.0f, ringR * 2.0f).withCentre (c), ringW * 0.84f);
     }
     if (pressed)
     {
-        g.setColour (Colour (0x30000000));
-        g.fillEllipse (Rectangle<float> (R * 1.45f, R * 1.45f).withCentre (c));
+        // bouton assombri tant qu'on appuie (disque noir à 25 %)
+        const float r = layout::footR * u * 0.98f;
+        g.setColour (Colours::black.withAlpha (0.25f));
+        g.fillEllipse (Rectangle<float> (r * 2.0f, r * 2.0f).withCentre (c));
     }
 }
 
 void FootSwitch::mouseDown (const MouseEvent& e)
 {
-    if (e.mods.isPopupMenu()) { owner.showModeMenu (this, FreezeShimmerProcessor::kLearnFreeze, FreezeShimmerProcessor::kLearnRelease); return; }
+    if (e.mods.isPopupMenu()) { owner.showMainMenu (FreezeShimmerProcessor::kLearnFreeze, FreezeShimmerProcessor::kLearnRelease, "Footswitch"); return; }
     pressed = true;
     ignoreUp = false;
     const auto now = Time::getMillisecondCounter();
@@ -229,114 +199,54 @@ void FootSwitch::mouseUp (const MouseEvent& e)
 }
 
 //==============================================================================
-// Ligne d'état
-void StatusLine::paint (Graphics& g)
-{
-    auto b = getLocalBounds().toFloat().reduced (1.0f);
-    const float h = b.getHeight();
-    g.setColour (Colour (0xcc07121f));
-    g.fillRoundedRectangle (b, h * 0.3f);
-    g.setColour (Colour (0x9938bdf8));
-    g.drawRoundedRectangle (b, h * 0.3f, jmax (1.0f, h * 0.045f));
-
-    // MIDI Learn : « MIDI LEARN: move a control for X », puis « X = CC n » pendant 2 s
-    if (owner.learnLine.isNotEmpty())
-    {
-        g.setFont (makeFont (jmax (9.0f, h * 0.50f), true));
-        g.setColour (Colour (0xffa7f3a0));
-        g.drawFittedText (owner.learnLine, b.reduced (h * 0.45f, 0.0f).toNearestInt(), Justification::centred, 1, 0.8f);
-        return;
-    }
-
-    // -- gauche : dernier paramètre touché
-    const int idx = owner.lastIndex.load();
-    String left = "--", right = "MIDI --";
-    if (idx >= 0 && idx < fsp::kNumKnobs)
-    {
-        const float v = owner.lastValue.load();
-        left  = String (fsp::kKnobs[idx].name) + "  " + fsp::formatValue (idx, v);
-        right = owner.ccLabel (idx).removeCharacters (" ") + " = " + String (fsp::toMidi (v));
-    }
-    else if (idx == 100) { const int s = (int) owner.lastValue.load(); left = "SCENE  " + fsp::kSceneNames[jlimit (0, 2, s)]; right = owner.ccLabel (FreezeShimmerProcessor::kLearnScene).removeCharacters (" ") + " = " + String (s * 43); }
-    else if (idx == 101) { const int s = (int) owner.lastValue.load(); left = "MODE  " + fsp::kModeNames[jlimit (0, 2, s)];  right = owner.ccLabel (FreezeShimmerProcessor::kLearnFMode).removeCharacters (" ") + " = " + String (s * 43); }
-    else if (idx == 104) { const int pi = jlimit (0, fsp::kNumPresets - 1, (int) owner.lastValue.load()); left = String ("PRESET ") + String (pi + 1) + "  " + String (fsp::kPresets[pi].name); right = "PC " + String (pi); }
-    else if (idx == 102) { const bool on = owner.lastValue.load() > 0.5f; left = on ? "ENGAGED" : "BYPASS"; right = owner.ccLabel (FreezeShimmerProcessor::kLearnEngage).removeCharacters (" ") + " = " + String (on ? 127 : 0); }
-
-    const bool flash = owner.lastFromMidi.load();
-    const Colour txt (0xffd7efff), accent (0xff6fe3ff), dim (0xff86a6bd);
-    const float fs1 = jmax (9.0f, h * 0.50f);
-
-    // couleur de la valeur = couleur de l'étiquette sous le potard (blanc : page A, bleu : page B)
-    bool blueLabel = false;
-    if (idx >= 0 && idx < fsp::kNumKnobs)
-    {
-        const juce::String kid (fsp::kKnobs[idx].id);
-        blueLabel = (kid == "rvbmix" || kid == "delay" || kid == "layer" || kid == "depth" || kid == "rate");
-    }
-    g.setFont (makeFont (fs1, true));
-    g.setColour (blueLabel ? accent : Colour (0xffffffff));
-    auto inner = b.reduced (h * 0.45f, 0.0f);
-    g.drawText (left, inner.removeFromLeft (inner.getWidth() * (getWidth() > 300 ? 0.36f : 0.5f)), Justification::centredLeft, false);
-
-    g.setFont (makeFont (fs1, true));
-    g.setColour (flash ? Colour (0xffa7f3a0) : accent);
-    g.drawText (right, inner.removeFromRight (inner.getWidth() * (getWidth() > 300 ? 0.32f : 0.45f)), Justification::centredRight, false);
-
-    // centre : scène · mode · page · état du freeze
-    const bool frozen = owner.proc.frozenState.load();
-    const String dot = String::fromUTF8 ("  \xc2\xb7  ");
-    String mid = fsp::kSceneNames[owner.choice ("scene")] + dot + fsp::kModeNames[owner.choice ("fmode")]
-               + dot + (owner.page() == 0 ? "A" : "B");
-    if (frozen) mid += dot + "FROZEN";
-    if (getWidth() > 300 && idx != 104)
-    {
-        g.setFont (makeFont (fs1 * 0.82f, false));
-        g.setColour (frozen ? accent : dim);
-        g.drawText (mid, inner, Justification::centred, false);
-    }
-    else if (frozen)
-    {
-        g.setFont (makeFont (fs1 * 0.82f, true));
-        g.setColour (accent);
-        g.drawText ("FROZEN", inner, Justification::centred, false);
-    }
-}
-
-//==============================================================================
 FreezeShimmerEditor::FreezeShimmerEditor (FreezeShimmerProcessor& p)
-    : AudioProcessorEditor (&p), proc (p)
+    : AudioProcessorEditor (&p), proc (p),
+      modeLamp (*this, ImageCache::getFromMemory (BinaryData::led_on_png, BinaryData::led_on_pngSize), true),
+      freezeLamp (*this, ImageCache::getFromMemory (BinaryData::led_on_png, BinaryData::led_on_pngSize), false)
 {
-    background   = ImageCache::getFromMemory (BinaryData::background_jpg, BinaryData::background_jpgSize);       // 780 x 990
-    background1x = ImageCache::getFromMemory (BinaryData::background_1x_jpg, BinaryData::background_1x_jpgSize); // 390 x 495 (net à la taille par défaut)
+    background = ImageCache::getFromMemory (BinaryData::background_png, BinaryData::background_pngSize);       // 1316 x 1800
+    regFace  = Typeface::createSystemTypefaceFor (BinaryData::PoppinsRegular_ttf, BinaryData::PoppinsRegular_ttfSize);
+    medFace  = Typeface::createSystemTypefaceFor (BinaryData::PoppinsMedium_ttf, BinaryData::PoppinsMedium_ttfSize);
+    boldFace = Typeface::createSystemTypefaceFor (BinaryData::PoppinsBold_ttf, BinaryData::PoppinsBold_ttfSize);
+    if (auto xml = XmlDocument::parse (String::fromUTF8 (BinaryData::NineHandsLogoWhite_svg, BinaryData::NineHandsLogoWhite_svgSize)))
+        logo = Drawable::createFromSVG (*xml);
+    menuLnf.f = { regFace, medFace, boldFace };
+    glowPct = NineHandsGlow::read (JucePlugin_Name);
 
+    nh::Knob::Layers L;
+    L.shadow    = ImageCache::getFromMemory (BinaryData::knob_shadow_png,    BinaryData::knob_shadow_pngSize);
+    L.crown     = ImageCache::getFromMemory (BinaryData::knob_crown_png,     BinaryData::knob_crown_pngSize);
+    L.cap       = ImageCache::getFromMemory (BinaryData::knob_cap_png,       BinaryData::knob_cap_pngSize);
+    L.marker    = ImageCache::getFromMemory (BinaryData::knob_marker_png,    BinaryData::knob_marker_pngSize);
+    L.highlight = ImageCache::getFromMemory (BinaryData::knob_highlight_png, BinaryData::knob_highlight_pngSize);
     for (int i = 0; i < 7; ++i)
     {
-        knob[i].setLookAndFeel (&look);
-        addAndMakeVisible (knob[i]);
+        knob[(size_t) i] = std::make_unique<nh::Knob> (L);
+        knob[(size_t) i]->setMouseCursor (MouseCursor::PointingHandCursor);
+        addAndMakeVisible (*knob[(size_t) i]);
     }
-    for (int i = 0; i < 6; ++i) knob[i].onRightClick = [this, i] { showSizeMenu (&knob[i], knobParamIndex (i)); };
-    knob[6].onRightClick = [this] { showKnob7Menu(); };
-    addAndMakeVisible (modeButton);
+    for (int i = 0; i < 6; ++i) knob[(size_t) i]->onRightClick = [this, i] (const MouseEvent&) { showKnobMenu (i); };
+    knob[6]->onRightClick = [this] (const MouseEvent&) { showKnob7Menu(); };
+    addAndMakeVisible (modeLamp);
+    addAndMakeVisible (freezeLamp);
     addAndMakeVisible (footSwitch);
-    addAndMakeVisible (status);
-    status.setInterceptsMouseClicks (false, false);
+    modeLamp.setMouseCursor (MouseCursor::PointingHandCursor);
+    footSwitch.setMouseCursor (MouseCursor::PointingHandCursor);
 
     for (int i = 0; i < fsp::kNumKnobs; ++i) proc.apvts.addParameterListener (fsp::kKnobs[i].id, this);
     for (auto id : { "scene", "fmode", "engage" }) proc.apvts.addParameterListener (id, this);
 
     bindKnobs();
 
-    const double aspect = (double) art::W / (double) art::H;
+    const double aspect = (double) baseW / (double) baseH;
     setResizable (true, true);
-    setResizeLimits (roundToInt ((double) art::heightPct50 * aspect), art::heightPct50,
-                     roundToInt ((double) art::heightMax * aspect), art::heightMax);
+    setResizeLimits (roundToInt ((double) defaultH * aspect), defaultH, roundToInt ((double) maxH * aspect), maxH);
     getConstrainer()->setFixedAspectRatio (aspect);
     setOpaque (true);                      // anti-gel : l'hôte ne redessine jamais ce qui est derrière la fenêtre
-    // taille mémorisée dans le projet pour cette instance si elle existe (uiHeight >= 50 %),
-    // sinon celle choisie dans le menu « Default size (new windows) »
+    // taille mémorisée dans le projet pour cette instance si elle existe (>= taille par défaut), sinon celle choisie dans
+    // le menu « Default size (new windows) »
     const int saved = proc.uiHeight.load();
-    const int h0 = saved >= art::heightPct50 ? jmin (saved, art::heightMax)
-                                              : sizeHeight (WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes));
+    const int h0 = (saved > defaultH && saved <= maxH) ? saved : sizeHeight (WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes));
     setSize (roundToInt ((double) h0 * aspect), h0);
     rebuildCaches();
     lastPresetSeen = proc.presetIndex.load();
@@ -346,10 +256,9 @@ FreezeShimmerEditor::FreezeShimmerEditor (FreezeShimmerProcessor& p)
 FreezeShimmerEditor::~FreezeShimmerEditor()
 {
     stopTimer();
+    PopupMenu::dismissAllActiveMenus();
     for (int i = 0; i < fsp::kNumKnobs; ++i) proc.apvts.removeParameterListener (fsp::kKnobs[i].id, this);
     for (auto id : { "scene", "fmode", "engage" }) proc.apvts.removeParameterListener (id, this);
-    for (auto& a : attach) a.reset();
-    for (auto& k : knob) k.setLookAndFeel (nullptr);
 }
 
 int FreezeShimmerEditor::choice (const char* id) const { return (int) proc.apvts.getRawParameterValue (id)->load(); }
@@ -377,6 +286,8 @@ void FreezeShimmerEditor::setBool (const char* id, bool v)
 
 void FreezeShimmerEditor::loadPreset (int index)
 {
+    suppressUntil = Time::getMillisecondCounterHiRes() + 400.0;
+    statusUntil = 0.0;
     proc.applyPreset (index);
     lastPresetSeen = proc.presetIndex.load();
     lastIndex.store (104);
@@ -391,43 +302,14 @@ void FreezeShimmerEditor::stepPreset (int delta)
 
 int FreezeShimmerEditor::sizeHeight (int idx)
 {
-    const int h[numSizes] = { art::heightPct50, art::heightPct75, art::heightPct100 };
+    const int h[numSizes] = { defaultH, roundToInt ((float) refH * 0.75f), refH };
     return h[jlimit (0, numSizes - 1, idx)];
-}
-
-// Plugin size : taille de cette fenêtre + taille par défaut des nouvelles fenêtres (comme Octopus)
-void FreezeShimmerEditor::addSizeItems (PopupMenu& sizes)
-{
-    const char* names[numSizes] = { "60 %", "75 %", "100 %" };
-    const int def = WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes);
-    const int curH = getHeight();
-    PopupMenu defSizes;
-    for (int i = 0; i < numSizes; ++i)
-    {
-        sizes.addItem (301 + i, String (names[i]) + (i == def ? "  (default)" : ""), true, std::abs (curH - sizeHeight (i)) < 8);
-        defSizes.addItem (320 + i, names[i], true, i == def);
-    }
-    sizes.addSeparator();
-    sizes.addSubMenu ("Default size (new windows)", defSizes);
-}
-
-bool FreezeShimmerEditor::handleSizeResult (int r)
-{
-    if (r >= 301 && r < 301 + numSizes)      setWindowHeight (sizeHeight (r - 301));
-    else if (r == 304)                       setWindowHeight (art::heightPct60);
-    else if (r >= 320 && r < 320 + numSizes)
-    {
-        WigaWindowSize::setDefaultIndex (JucePlugin_Name, r - 320);   // toutes les nouvelles fenêtres de ce plugin
-        setWindowHeight (sizeHeight (r - 320));                      // et cette fenêtre tout de suite
-    }
-    else return false;
-    return true;
 }
 
 void FreezeShimmerEditor::setWindowHeight (int h)
 {
-    h = jlimit (art::heightPct50, art::heightMax, h);
-    setSize (roundToInt ((double) h * (double) art::W / (double) art::H), h);
+    h = jlimit (defaultH, maxH, h);
+    setSize (roundToInt ((double) h * (double) baseW / (double) baseH), h);
 }
 
 void FreezeShimmerEditor::cycleScene() { setChoice ("scene", (choice ("scene") + 1) % 3); }
@@ -460,44 +342,80 @@ void FreezeShimmerEditor::bindKnobs()
 {
     for (int i = 0; i < 7; ++i)
     {
-        attach[i].reset();
         const int pi = knobParamIndex (i);
         const bool sec = (i >= 2 && page() == 1) || (i == 6 && knob7Gliss);
-        knob[i].getProperties().set ("secondary", sec);
-        knob[i].setDoubleClickReturnValue (true, (double) fsp::kKnobs[pi].def);
-        attach[i] = std::make_unique<AudioProcessorValueTreeState::SliderAttachment> (proc.apvts, fsp::kKnobs[pi].id, knob[i]);
-        knob[i].repaint();
+        knob[(size_t) i]->setRing (sec);                   // liseré bleu = bouton de la page secondaire
+        knob[(size_t) i]->bind (*proc.apvts.getParameter (fsp::kKnobs[pi].id));
     }
     lastIndex.store (-1);
 }
 
-void FreezeShimmerEditor::showKnob7Menu()
+void FreezeShimmerEditor::flash (const String& s)
 {
-    PopupMenu m;
-    addLearnSection (m, fsp::kKnobs[knobParamIndex (6)].name, knobParamIndex (6));
-    m.addSectionHeader ("Bouton TONE / RATE / GLISS");
-    m.addItem (1, "TONE / RATE (suit la page)", true, ! knob7Gliss);
-    m.addItem (2, "GLISS (freeze)", true, knob7Gliss);
-    m.showMenuAsync (PopupMenu::Options().withTargetComponent (&knob[6]), [this] (int r)
-    {
-        if (r == 0 || handleLearnResult (r)) return;
-        knob7Gliss = (r == 2);
-        bindKnobs();
-    });
+    flashText = s;
+    flashUntil = Time::getMillisecondCounterHiRes() + 1800.0;
+    statusUntil = jmax (statusUntil, flashUntil);
 }
 
 //==============================================================================
-// MIDI Learn
+// Menus (design d'Octopus, ouverts là où on clique)
+void FreezeShimmerEditor::addSizeItems (PopupMenu& sizes)
+{
+    const char* names[numSizes] = { "60 %", "75 %", "100 %" };
+    const int def = WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes);
+    const int curH = getHeight();
+    PopupMenu defSizes;
+    for (int i = 0; i < numSizes; ++i)
+    {
+        sizes.addItem (301 + i, String (names[i]) + (i == def ? "  (default)" : ""), true, std::abs (curH - sizeHeight (i)) <= 8);
+        defSizes.addItem (320 + i, names[i], true, i == def);
+    }
+    sizes.addSeparator();
+    sizes.addSubMenu ("Default size (new windows)", defSizes);
+}
+
+bool FreezeShimmerEditor::handleSizeResult (int r)
+{
+    if (r >= 301 && r < 301 + numSizes)      setWindowHeight (sizeHeight (r - 301));
+    else if (r >= 320 && r < 320 + numSizes)
+    {
+        WigaWindowSize::setDefaultIndex (JucePlugin_Name, r - 320);   // toutes les nouvelles fenêtres de ce plugin
+        setWindowHeight (sizeHeight (r - 320));                      // et cette fenêtre tout de suite
+    }
+    else return false;
+    return true;
+}
+
+// Glow : intensité du halo des lumières (25 / 50 / 75 / 100 %), commune à toutes les fenêtres du plugin
+void FreezeShimmerEditor::addGlowItems (PopupMenu& m)
+{
+    PopupMenu glow;
+    for (int v : { 25, 50, 75, 100 })
+        glow.addItem (600 + v, "Glow " + String (v) + " %" + (v == 100 ? "  (default)" : ""), true, glowPct == v);
+    m.addSubMenu ("Glow (halo of the lights)", glow);
+}
+
+bool FreezeShimmerEditor::handleGlowResult (int r)
+{
+    if (r < 625 || r > 700 || (r - 600) % 25 != 0) return false;
+    glowPct = r - 600;
+    NineHandsGlow::write (JucePlugin_Name, glowPct);
+    flash ("Glow  " + String (glowPct) + " %");
+    modeLamp.repaint(); freezeLamp.repaint(); footSwitch.repaint();
+    return true;
+}
+
 String FreezeShimmerEditor::ccLabel (int i) const
 {
     const int cc = proc.ccMap[jlimit (0, FreezeShimmerProcessor::kNumLearn - 1, i)].load();
     return cc >= 0 ? "CC " + String (cc) : String ("no CC");
 }
 
-void FreezeShimmerEditor::addLearnSection (PopupMenu& m, const String& header, int a, int b)
+void FreezeShimmerEditor::addLearnSection (PopupMenu& m, const String& header, int a, int b, int ico)
 {
     const int lt = proc.learnTarget.load();
-    m.addSectionHeader (header);
+    const String sub = b >= 0 ? String() : (proc.ccMap[a].load() >= 0 ? "MIDI: " + ccLabel (a) : String ("MIDI: not assigned"));
+    NineHandsMenu::addHeader (m, menuLnf.f, ico, kAccent, header, sub);
     for (int i : { a, b })
     {
         if (i < 0) continue;
@@ -532,67 +450,111 @@ bool FreezeShimmerEditor::handleLearnResult (int r)
     return true;
 }
 
-void FreezeShimmerEditor::showModeMenu (Component* target, int learnA, int learnB)
+void FreezeShimmerEditor::showMainMenu (int learnA, int learnB, const String& header)
 {
-    PopupMenu m, scenes, modes, chans;
+    PopupMenu m, scenes, modes, chans, presets, sizes;
     if (learnA >= 0)
-        addLearnSection (m, learnA == FreezeShimmerProcessor::kLearnScene ? "MODE button" : "Footswitch", learnA, learnB);
+        addLearnSection (m, header, learnA, learnB, learnA == FreezeShimmerProcessor::kLearnFreeze ? NineHandsMenu::icoSwitch : NineHandsMenu::icoPedal);
+    else
+        NineHandsMenu::addHeader (m, menuLnf.f, NineHandsMenu::icoPedal, kAccent, "Freeze Shimmer", "Reverb  v" + String (JucePlugin_VersionString));
     for (int i = 0; i < 3; ++i) scenes.addItem (1 + i, fsp::kSceneNames[i], true, choice ("scene") == i);
     for (int i = 0; i < 3; ++i) modes.addItem (11 + i, fsp::kModeNames[i], true, choice ("fmode") == i);
     for (int i = 0; i < 17; ++i) chans.addItem (100 + i, i == 0 ? String ("OMNI") : String (i), true, choice ("midichan") == i);
-    PopupMenu presets, sizes;
     for (int i = 0; i < fsp::kNumPresets; ++i)
-        presets.addItem (200 + i, String (i + 1) + "  " + fsp::kPresets[i].name, true, proc.presetIndex.load() == i);
+        presets.addItem (200 + i, String (i + 1) + "  " + niceName (fsp::kPresets[i].name), true, proc.presetIndex.load() == i);
     addSizeItems (sizes);
-    m.addSubMenu ("Presets d'usine", presets);
+    m.addSubMenu ("Presets", presets);
     m.addSubMenu ("Plugin size", sizes);
+    addGlowItems (m);
     m.addSeparator();
     m.addSubMenu ("Scene (shimmer)", scenes);
     m.addSubMenu ("Mode freeze", modes);
     m.addSeparator();
-    m.addItem (21, "Boutons : page A (primaire)", true, page() == 0);
-    m.addItem (22, "Boutons : page B (secondaire, bleu)", true, page() == 1);
+    m.addItem (21, "Knobs: page A (primary)", true, page() == 0);
+    m.addItem (22, "Knobs: page B (secondary, blue)", true, page() == 1);
     m.addSeparator();
-    m.addItem (30, "Effet actif (bypass si decoche)", true, getBool ("engage"));
-    m.addItem (31, "Arreter le freeze (ou double-clic footswitch)");
+    m.addItem (30, "Effect on (bypass when unticked)", true, getBool ("engage"));
+    m.addItem (31, "Stop the freeze (or double-click footswitch)");
     m.addSeparator();
-    m.addSubMenu ("Canal MIDI", chans);
+    m.addSubMenu ("MIDI channel", chans);
     addMidiLearnSubMenu (m);
-    m.addItem (40, "Table MIDI...");
-    m.showMenuAsync (PopupMenu::Options().withTargetComponent (target), [this] (int r)
-    {
-        if (r == 0 || handleLearnResult (r)) return;
-        if (r >= 1 && r <= 3)        setChoice ("scene", r - 1);
-        else if (r >= 11 && r <= 13) setChoice ("fmode", r - 11);
-        else if (r == 21)            setPage (0);
-        else if (r == 22)            setPage (1);
-        else if (r == 30)            setBool ("engage", ! getBool ("engage"));
-        else if (r == 31)            proc.postCommand (FreezeShimmerProcessor::cmdRelease);
-        else if (r == 40)            showMidiMap();
-        else if (r >= 100 && r <= 116) setChoice ("midichan", r - 100);
-        else if (r >= 200 && r < 200 + fsp::kNumPresets) loadPreset (r - 200);
-        else handleSizeResult (r);
-    });
+    m.addItem (40, "MIDI map...");
+    m.addSeparator();
+    m.addItem (999, "Freeze Shimmer v" + String (JucePlugin_VersionString) + " - NINE HANDS | DSP", false);
+    m.setLookAndFeel (&menuLnf);
+    m.showMenuAsync (PopupMenu::Options().withMousePosition(),      // toujours là où l'on clique
+        [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r)
+        {
+            if (safe == nullptr || r == 0) return;
+            auto& ed = *safe;
+            if (ed.handleLearnResult (r) || ed.handleGlowResult (r) || ed.handleSizeResult (r)) return;
+            if (r >= 1 && r <= 3)        ed.setChoice ("scene", r - 1);
+            else if (r >= 11 && r <= 13) ed.setChoice ("fmode", r - 11);
+            else if (r == 21)            ed.setPage (0);
+            else if (r == 22)            ed.setPage (1);
+            else if (r == 30)            ed.setBool ("engage", ! ed.getBool ("engage"));
+            else if (r == 31)            ed.proc.postCommand (FreezeShimmerProcessor::cmdRelease);
+            else if (r == 40)            ed.showMidiMap();
+            else if (r >= 100 && r <= 116) ed.setChoice ("midichan", r - 100);
+            else if (r >= 200 && r < 200 + fsp::kNumPresets) ed.loadPreset (r - 200);
+        });
 }
 
-void FreezeShimmerEditor::showSizeMenu (Component* target, int learnIdx)
+void FreezeShimmerEditor::showKnobMenu (int k)
+{
+    const int pi = knobParamIndex (k);
+    PopupMenu m, sizes;
+    addLearnSection (m, fsp::kKnobs[pi].name, pi);
+    addSizeItems (sizes);
+    m.addSubMenu ("Plugin size", sizes);
+    addGlowItems (m);
+    m.addSeparator();
+    addMidiLearnSubMenu (m);
+    m.setLookAndFeel (&menuLnf);
+    m.showMenuAsync (PopupMenu::Options().withMousePosition(),
+        [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r)
+        {
+            if (safe == nullptr || r == 0) return;
+            if (safe->handleLearnResult (r) || safe->handleGlowResult (r)) return;
+            safe->handleSizeResult (r);
+        });
+}
+
+void FreezeShimmerEditor::showKnob7Menu()
+{
+    PopupMenu m, sizes;
+    addLearnSection (m, fsp::kKnobs[knobParamIndex (6)].name, knobParamIndex (6));
+    m.addItem (1, "TONE / RATE (follows the page)", true, ! knob7Gliss);
+    m.addItem (2, "GLISS (freeze)", true, knob7Gliss);
+    m.addSeparator();
+    addSizeItems (sizes);
+    m.addSubMenu ("Plugin size", sizes);
+    addGlowItems (m);
+    m.addSeparator();
+    addMidiLearnSubMenu (m);
+    m.setLookAndFeel (&menuLnf);
+    m.showMenuAsync (PopupMenu::Options().withMousePosition(),
+        [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r)
+        {
+            if (safe == nullptr || r == 0) return;
+            auto& ed = *safe;
+            if (ed.handleLearnResult (r) || ed.handleGlowResult (r) || ed.handleSizeResult (r)) return;
+            if (r == 1 || r == 2) { ed.knob7Gliss = (r == 2); ed.bindKnobs(); }
+        });
+}
+
+void FreezeShimmerEditor::showPresetMenu()
 {
     PopupMenu m;
-    if (learnIdx >= 0) addLearnSection (m, FreezeShimmerProcessor::learnDef (learnIdx).name, learnIdx);
-    m.addSectionHeader ("Plugin size");
-    addSizeItems (m);
-    m.addSeparator();
-    addMidiLearnSubMenu (m);
-    m.showMenuAsync (PopupMenu::Options().withTargetComponent (target), [this] (int r)
-    {
-        if (handleLearnResult (r)) return;
-        handleSizeResult (r);
-    });
-}
-
-void FreezeShimmerEditor::mouseDown (const MouseEvent& e)
-{
-    if (e.mods.isPopupMenu()) showSizeMenu (this);
+    NineHandsMenu::addHeader (m, menuLnf.f, NineHandsMenu::icoPreset, kAccent, "Presets", niceName (fsp::kPresets[proc.presetIndex.load()].name));
+    for (int i = 0; i < fsp::kNumPresets; ++i)
+        m.addItem (200 + i, String (i + 1) + "  " + niceName (fsp::kPresets[i].name), true, proc.presetIndex.load() == i);
+    m.setLookAndFeel (&menuLnf);
+    m.showMenuAsync (PopupMenu::Options().withMousePosition(),
+        [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r)
+        {
+            if (safe != nullptr && r >= 200 && r < 200 + fsp::kNumPresets) safe->loadPreset (r - 200);
+        });
 }
 
 void FreezeShimmerEditor::showMidiMap()
@@ -602,19 +564,52 @@ void FreezeShimmerEditor::showMidiMap()
     for (int i = 0; i < fsp::kNumKnobs; ++i)
         t << ccLabel (i) << "  =  " << fsp::kKnobs[i].name << "\n";
     t << "\n" << ccLabel (FreezeShimmerProcessor::kLearnScene)   << "  =  Scene (0-42 / 43-85 / 86-127)"
-      << "\n" << ccLabel (FreezeShimmerProcessor::kLearnFMode)   << "  =  Mode freeze LATCH / MOMENT / AUTO"
+      << "\n" << ccLabel (FreezeShimmerProcessor::kLearnFMode)   << "  =  Freeze mode LATCH / MOMENT / AUTO"
       << "\n" << ccLabel (FreezeShimmerProcessor::kLearnFreeze)  << "  =  Footswitch freeze (>= 64)"
-      << "\n" << ccLabel (FreezeShimmerProcessor::kLearnEngage)  << "  =  Effet actif (>= 64) / bypass"
-      << "\n" << ccLabel (FreezeShimmerProcessor::kLearnRelease) << "  =  Relache le freeze"
-      << "\nProgram Change 0-9  =  Preset d'usine";
-    AlertWindow::showMessageBoxAsync (MessageBoxIconType::InfoIcon, "Freeze Shimmer - table MIDI", t);
+      << "\n" << ccLabel (FreezeShimmerProcessor::kLearnEngage)  << "  =  Effect on (>= 64) / bypass"
+      << "\n" << ccLabel (FreezeShimmerProcessor::kLearnRelease) << "  =  Release the freeze"
+      << "\nProgram Change 0-9  =  Factory preset";
+    AlertWindow::showMessageBoxAsync (MessageBoxIconType::InfoIcon, "Freeze Shimmer - MIDI map", t);
 }
 
+//==============================================================================
+// Souris : barre de presets (flèches = précédent / suivant, nom = menu), clic droit = menu principal
+static int presetZoneAt (Point<float> p)
+{
+    const auto r = layout::presetRect;
+    if (! r.contains (p)) return 0;
+    if (p.x < r.getX() + 34.0f) return 1;
+    if (p.x > r.getRight() - 34.0f) return 3;
+    return 2;
+}
+
+void FreezeShimmerEditor::mouseMove (const MouseEvent& e)
+{
+    hoverZone = presetZoneAt (e.position / ((float) getHeight() / baseH));
+    setMouseCursor (hoverZone != 0 ? MouseCursor::PointingHandCursor : MouseCursor::NormalCursor);
+}
+
+void FreezeShimmerEditor::mouseExit (const MouseEvent&) { hoverZone = 0; }
+
+void FreezeShimmerEditor::mouseDown (const MouseEvent& e)
+{
+    if (e.mods.isPopupMenu()) { showMainMenu(); return; }
+    const auto p = e.position / ((float) getHeight() / baseH);
+    if (layout::presetRect.contains (p) && statusAlpha > 0.0f) { statusUntil = 0.0; learnLineUntil = 0.0; flashUntil = 0.0; }   // la ligne d'état ne bloque pas
+    switch (presetZoneAt (p))
+    {
+        case 1: stepPreset (-1); break;
+        case 2: showPresetMenu(); break;
+        case 3: stepPreset (1); break;
+        default: break;
+    }
+}
+
+//==============================================================================
 void FreezeShimmerEditor::parameterChanged (const String& id, float v)
 {
     const int k = fsp::findKnob (id);
     int idx = k;
-    float val = v;
     if (k < 0)
     {
         if (id == "scene") idx = 100;
@@ -622,22 +617,42 @@ void FreezeShimmerEditor::parameterChanged (const String& id, float v)
         else if (id == "engage") idx = 102;
         else return;
     }
-    // un bouton affiché ne doit pas écraser l'info d'un paramètre non visible
     lastIndex.store (idx);
-    lastValue.store (val);
+    lastValue.store (v);
     lastFromMidi.store (proc.lastMidiStamp.load() != lastMidiStampSeen);
+    changeCounter.fetch_add (1);
+}
+
+String FreezeShimmerEditor::buildStatusLine() const
+{
+    const double now = Time::getMillisecondCounterHiRes();
+    if (flashText.isNotEmpty() && now < flashUntil) return flashText;
+    if (learnLine.isNotEmpty()) return learnLine;
+    const int idx = lastIndex.load();
+    const float v = lastValue.load();
+    String left, right;
+    if (idx >= 0 && idx < fsp::kNumKnobs)
+    {
+        left = String (fsp::kKnobs[idx].name) + "  " + fsp::formatValue (idx, v);
+        if (proc.ccMap[idx].load() >= 0) right = ccLabel (idx) + " = " + String (fsp::toMidi (v));
+    }
+    else if (idx == 100) { const int s = jlimit (0, 2, (int) v); left = "SCENE  " + fsp::kSceneNames[s]; if (proc.ccMap[FreezeShimmerProcessor::kLearnScene].load() >= 0) right = ccLabel (FreezeShimmerProcessor::kLearnScene) + " = " + String (s * 43); }
+    else if (idx == 101) { const int s = jlimit (0, 2, (int) v); left = "MODE  " + fsp::kModeNames[s];   if (proc.ccMap[FreezeShimmerProcessor::kLearnFMode].load() >= 0) right = ccLabel (FreezeShimmerProcessor::kLearnFMode) + " = " + String (s * 43); }
+    else if (idx == 102) { left = v > 0.5f ? "EFFECT ON" : "BYPASS"; }
+    if (left.isEmpty()) return {};
+    return right.isNotEmpty() ? left + String::fromUTF8 ("  \xc2\xb7  ") + right : left;
 }
 
 void FreezeShimmerEditor::timerCallback()
 {
+    const double now = Time::getMillisecondCounterHiRes();
     const int stamp = proc.lastMidiStamp.load();
     if (stamp != lastMidiStampSeen) { lastMidiStampSeen = stamp; midiFlashTicks = 24; }
     if (midiFlashTicks > 0) --midiFlashTicks; else lastFromMidi.store (false);
     const int pr = proc.presetIndex.load();
-    if (pr != lastPresetSeen) { lastPresetSeen = pr; lastIndex.store (104); lastValue.store ((float) pr); lastFromMidi.store (false); }
+    if (pr != lastPresetSeen) { lastPresetSeen = pr; suppressUntil = now + 400.0; statusUntil = 0.0; lastIndex.store (104); lastValue.store ((float) pr); lastFromMidi.store (false); }
 
     // moteur logiciel : seulement si la fenêtre hôte a changé, ou au plus une fois par seconde
-    const double now = Time::getMillisecondCounterHiRes();
     if (getPeer() != lastPeer || now - lastRendererCheckMs > 1000.0) { lastRendererCheckMs = now; useSoftwareRenderer(); }
 
     // caches : reconstruits ici seulement (jamais dans paint)
@@ -658,22 +673,19 @@ void FreezeShimmerEditor::timerCallback()
         repaint();
     }
 
-    // on ne redessine un composant que si ce qu'il affiche a vraiment changé (zéro travail au repos)
-    const bool frozen = proc.frozenState.load();
-
-    // LED MODE : éteinte / bleu fixe / bleu clignotant (en freeze)
-    const bool blink = (Time::getMillisecondCounter() / 350) % 2 == 0;
-    modeButton.setBlinkPhase (blink);
-    const bool modeOn = getBool ("engage") && ! (frozen && ! blink);
-    if (modeOn != drawnModeOn) { drawnModeOn = modeOn; askRepaint (modeButton); }
-
-    // footswitch : halo pulsé tant que le freeze est actif (animation continue), un dernier redessin à l'arrêt
-    const float pulse = frozen ? 0.55f + 0.25f * std::sin ((float) Time::getMillisecondCounter() * 0.004f) : 0.0f;
-    if (frozen != drawnFrozen || std::abs (pulse - drawnPulse) >= 0.002f)
+    // Glow choisi dans une autre fenêtre : relu toutes les 3 s
+    if (now - lastGlowCheckMs > 3000.0)
     {
-        drawnFrozen = frozen; drawnPulse = pulse;
-        askRepaint (footSwitch);
+        lastGlowCheckMs = now;
+        const int gp = NineHandsGlow::read (JucePlugin_Name);
+        if (gp != glowPct) { glowPct = gp; modeLamp.repaint(); freezeLamp.repaint(); footSwitch.repaint(); }
     }
+
+    // lampes : MODE = page B ; FREEZE = freeze actif (fondu) ; anneau du footswitch = freeze actif
+    const bool frozen = proc.frozenState.load();
+    if (modeLamp.step (page() == 1 ? 1.0f : 0.0f))   askRepaint (modeLamp);
+    if (freezeLamp.step (frozen ? 1.0f : 0.0f))      askRepaint (freezeLamp);
+    if (footSwitch.step (frozen ? 1.0f : 0.0f))      askRepaint (footSwitch);
 
     // MIDI Learn : attente puis confirmation 2 s dans la ligne d'état
     {
@@ -683,25 +695,67 @@ void FreezeShimmerEditor::timerCallback()
         {
             learnLine = String (FreezeShimmerProcessor::learnDef (learned).name) + " = " + ccLabel (learned);
             learnLineUntil = now + 2000.0;
+            statusUntil = jmax (statusUntil, learnLineUntil);
         }
         else if (lt >= 0)
         {
             learnLine = "MIDI LEARN: move a control for " + String (FreezeShimmerProcessor::learnDef (lt).name);
-            learnLineUntil = now + 100.0;
+            learnLineUntil = now + 200.0;
+            statusUntil = jmax (statusUntil, now + 200.0);
         }
         else if (now >= learnLineUntil)
             learnLine.clear();
     }
 
-    // ligne d'état
-    StatusState st;
-    st.learn = learnLine;
-    st.idx = lastIndex.load(); st.value = lastValue.load(); st.flash = lastFromMidi.load(); st.frozen = frozen;
-    st.scene = choice ("scene"); st.fmode = choice ("fmode"); st.page = page();
-    if (! drawnStatusValid || st != drawnStatus)
+    // un réglage a bougé : la ligne d'état prend la place de la barre de presets (~2,5 s après le dernier mouvement)
+    const int cc = changeCounter.load();
+    if (cc != changeSeen) { changeSeen = cc; if (now > suppressUntil) { statusUntil = now + 2500.0; flashText.clear(); } }
+    for (auto& k : knob) if (k->isMouseButtonDown()) { statusUntil = now + 2500.0; }
+
+    const float target = now < statusUntil ? 1.0f : 0.0f;
+    statusAlpha += (target - statusAlpha) * (target > statusAlpha ? 0.45f : 0.25f);   // ~120 ms à l'apparition, ~300 ms au retour
+    if (statusAlpha < 0.005f) statusAlpha = 0.0f;
+    if (statusAlpha > 0.995f) statusAlpha = 1.0f;
+
+    const String st = buildStatusLine(), pn = niceName (fsp::kPresets[jlimit (0, fsp::kNumPresets - 1, pr)].name);
+    const bool textChanged = st != lastStatusText || pn != lastPresetText;
+    lastStatusText = st; lastPresetText = pn;
+    if (std::abs (statusAlpha - drawnStatusAlpha) > 0.003f || textChanged || hoverZone != drawnHover || midiFlashTicks > 0)
     {
-        drawnStatus = st; drawnStatusValid = true;
-        askRepaint (status);
+        drawnStatusAlpha = statusAlpha; drawnHover = hoverZone;
+        askRepaint (layout::presetRect.expanded (3.0f));
+    }
+}
+
+// pastille : barre de presets au repos ; la ligne d'état prend sa place en fondu croisé (même pastille, même police)
+void FreezeShimmerEditor::drawPresetBar (Graphics& g)
+{
+    const auto r = layout::presetRect;
+    const float a = statusAlpha, pa = 1.0f - a;
+    const Font f (FontOptions (medFace).withHeight (layout::presetFont));
+    const float aw = 34.0f;
+    const bool midiFlash = midiFlashTicks > 0;
+    if (pa > 0.0f)
+    {
+        auto arrow = [&] (Rectangle<float> ar, bool left, bool hot)
+        {
+            Path p; const auto c = ar.getCentre(); const float sz = 5.5f;
+            if (left) p.addTriangle (c.x + sz * 0.6f, c.y - sz, c.x + sz * 0.6f, c.y + sz, c.x - sz * 0.8f, c.y);
+            else      p.addTriangle (c.x - sz * 0.6f, c.y - sz, c.x - sz * 0.6f, c.y + sz, c.x + sz * 0.8f, c.y);
+            g.setColour (Colour (150, 160, 172).interpolatedWith (Colours::white, hot ? 1.0f : 0.0f).withAlpha (pa));
+            g.fillPath (p);
+        };
+        arrow (r.withWidth (aw), true, hoverZone == 1);
+        arrow (r.withTrimmedLeft (r.getWidth() - aw), false, hoverZone == 3);
+        g.setFont (f);
+        g.setColour (kInk.withAlpha ((hoverZone == 2 ? 1.0f : 0.92f) * pa));
+        g.drawFittedText (lastPresetText, r.reduced (aw, 0.0f).toNearestInt(), Justification::centred, 1, 0.7f);
+    }
+    if (a > 0.0f)
+    {
+        g.setFont (f);
+        g.setColour ((midiFlash ? Colour (0xffa7f3a0) : kInk).withAlpha (a));
+        g.drawFittedText (lastStatusText.toUpperCase(), r.reduced (r.getHeight() * 0.5f, 0.0f).toNearestInt(), Justification::centred, 1, 0.6f);
     }
 }
 
@@ -709,17 +763,93 @@ void FreezeShimmerEditor::paint (Graphics& g)
 {
     lastPaintMs = Time::getMillisecondCounterHiRes();
     repaintAskedMs = 0.0;
-    g.fillAll (Colours::white);
+    g.fillAll (Colour (0xff111112));          // autour des jacks : le fond de l'image est transparent
     // anti-gel : aucun rescale ici, on dessine le cache existant (ou l'original en attendant le timer)
-    if (bgScaled.isValid())
-    {
-        g.setImageResamplingQuality (Graphics::lowResamplingQuality);
-        g.drawImage (bgScaled, getLocalBounds().toFloat(), RectanglePlacement::stretchToFit);
-        return;
-    }
+    const Image& bg = bgScaled.isValid() ? bgScaled : background;
+    g.setImageResamplingQuality (&bg == &background ? Graphics::highResamplingQuality : Graphics::lowResamplingQuality);
+    if (bg.isValid()) g.drawImage (bg, getLocalBounds().toFloat());
+    g.addTransform (AffineTransform::scale ((float) getHeight() / baseH));
+    drawPresetBar (g);
+}
+
+//==============================================================================
+// Sérigraphie vectorielle (textes, titre, logo, pastille) dessinée dans le fond à la taille réelle en pixels
+void FreezeShimmerEditor::drawPrint (Graphics& g, int pw, int ph)
+{
+    const float ppu = (float) pw / baseW;                               // pixels par unité
+    g.addTransform (AffineTransform::scale ((float) pw / baseW, (float) ph / baseH));
     g.setImageResamplingQuality (Graphics::highResamplingQuality);
-    const bool native = std::abs (getHeight() - art::heightPct50) <= 2 && background1x.isValid();
-    g.drawImage (native ? background1x : background, getLocalBounds().toFloat(), RectanglePlacement::stretchToFit);
+
+    // pastille (fond sombre, contour fin) : le texte est dessiné par l'éditeur
+    {
+        const auto r = layout::presetRect;
+        g.setColour (Colour (5, 8, 13));
+        g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
+        g.setColour (Colour (150, 170, 190));
+        g.drawRoundedRectangle (r.reduced (0.5f), r.getHeight() * 0.5f, 1.0f);
+    }
+
+    // chemins : étiquettes, titre
+    Path labels[2], title[2];
+    for (const auto& t : layout::texts)
+        labels[t.col].addPath (textPath (t.font == 1 ? boldFace : medFace, t.em, t.track, t.x, t.y, t.rot, t.s));
+    {
+        const Font tf (FontOptions (boldFace).withPointHeight (layout::titleEm));
+        auto adv = [&] (const String& str) { float w = 0; for (int i = 0; i < str.length(); ++i) w += GlyphArrangement::getStringWidth (tf, String::charToString (str[i])); return w; };
+        const float tr = layout::titleTrack;
+        const float wF = adv ("FREEZE") + 5.0f * tr, wS = adv ("SHIMMER") + 6.0f * tr;
+        const float total = adv ("FREEZE SHIMMER") + 13.0f * tr;
+        const float x0 = layout::titleX - total * 0.5f;
+        const float sStart = x0 + adv ("FREEZE ") + 7.0f * tr;
+        title[0] = textPath (boldFace, layout::titleEm, tr, x0 + wF * 0.5f, layout::titleY, 0.0f, "FREEZE");
+        title[1] = textPath (boldFace, layout::titleEm, tr, sStart + wS * 0.5f, layout::titleY, 0.0f, "SHIMMER");
+    }
+
+    // ombre douce (bleu nuit) sous les étiquettes (décalage 1) et le titre (décalage 2) : masque flou à résolution réduite
+    {
+        const int div = jlimit (1, 4, (int) std::floor (2.0f * ppu / 1.5f));
+        const int mw = pw / div + 2, mh = ph / div + 2;
+        Image mask (Image::ARGB, mw, mh, true);
+        {
+            Graphics gm (mask);
+            gm.addTransform (AffineTransform::scale (ppu / (float) div));
+            gm.setColour (Colour (6, 28, 60));
+            gm.fillPath (labels[0], AffineTransform::translation (1.0f, 1.0f));
+            gm.fillPath (labels[1], AffineTransform::translation (1.0f, 1.0f));
+            gm.fillPath (title[0], AffineTransform::translation (2.0f, 2.0f));
+            gm.fillPath (title[1], AffineTransform::translation (2.0f, 2.0f));
+        }
+        const int rad = jmax (1, roundToInt (2.0f * ppu / (float) div));
+        ImageConvolutionKernel k ((size_t) (rad * 2 + 1));
+        k.createGaussianBlur ((float) rad);
+        Image blurred (Image::ARGB, mw, mh, true);
+        k.applyToImage (blurred, mask, mask.getBounds());
+        const Rectangle<float> dest (0.0f, 0.0f, (float) mw * (float) div / ppu, (float) mh * (float) div / ppu);
+        g.setImageResamplingQuality (Graphics::mediumResamplingQuality);
+        for (int pass = 0; pass < 2; ++pass) { g.setOpacity (0.9f); g.drawImage (blurred, dest); }
+        g.setOpacity (1.0f);
+        g.setImageResamplingQuality (Graphics::highResamplingQuality);
+    }
+
+    g.setColour (Colour (232, 238, 245)); g.fillPath (labels[0]);
+    g.setColour (Colour (150, 222, 255)); g.fillPath (labels[1]);
+    // titre givré : dégradé vertical (haut clair), « FREEZE » blanc glacé, « SHIMMER » bleu glace
+    const float ty0 = layout::titleY - layout::titleEm * 0.5f, ty1 = layout::titleY + layout::titleEm * 0.5f;
+    auto fillTitle = [&] (const Path& p, Colour c)
+    {
+        g.setGradientFill (ColourGradient (c, 0.0f, ty0, c.withMultipliedBrightness (0.86f), 0.0f, ty1, false));
+        g.fillPath (p);
+    };
+    fillTitle (title[0], Colour (236, 242, 248));
+    fillTitle (title[1], Colour (96, 190, 240));
+
+    // logo NINE HANDS | DSP (SVG officiel blanc, sans recoloration)
+    if (logo != nullptr)
+    {
+        const auto vb = logo->getDrawableBounds();
+        const float w = layout::logoW, h = w * vb.getHeight() / jmax (1.0f, vb.getWidth());
+        logo->drawWithin (g, { layout::logoPos.x - w * 0.5f, layout::logoPos.y - h * 0.5f, w, h }, RectanglePlacement::centred, 1.0f);
+    }
 }
 
 // fond déjà à la taille de la fenêtre en pixels physiques : constructeur et timer, jamais paint()
@@ -732,10 +862,12 @@ void FreezeShimmerEditor::rebuildCaches (float sc)
 
     cacheW = w; cacheH = h; cacheScale = sc;
     const int pw = roundToInt ((float) w * sc), ph = roundToInt ((float) h * sc);
-    // taille par défaut en 100 % : l'image 1x est déjà nette, on la garde telle quelle
-    if (background1x.isValid() && std::abs (ph - background1x.getHeight()) <= 2) bgScaled = background1x;
-    else if (pw >= background.getWidth())                                         bgScaled = background;
-    else bgScaled = background.rescaled (pw, ph, Graphics::highResamplingQuality);
+    Image img = (pw >= background.getWidth()) ? background.createCopy() : background.rescaled (pw, ph, Graphics::highResamplingQuality);
+    {
+        Graphics g (img);
+        drawPrint (g, img.getWidth(), img.getHeight());
+    }
+    bgScaled = img;
     repaint();
 }
 
@@ -747,7 +879,13 @@ float FreezeShimmerEditor::physicalScale() const
 void FreezeShimmerEditor::askRepaint (Component& c)
 {
     if (repaintAskedMs <= 0.0) repaintAskedMs = Time::getMillisecondCounterHiRes();
-    repaint (c.getBounds());       // la zone de l'éditeur couvre aussi le composant (redessiné avec)
+    repaint (c.getBounds());
+}
+
+void FreezeShimmerEditor::askRepaint (Rectangle<float> r)
+{
+    if (repaintAskedMs <= 0.0) repaintAskedMs = Time::getMillisecondCounterHiRes();
+    repaint (r.transformedBy (AffineTransform::scale ((float) getHeight() / baseH)).getSmallestIntegerContainer());
 }
 
 //==============================================================================
@@ -785,16 +923,15 @@ void FreezeShimmerEditor::resized()
 {
     // anti-gel : jamais de setSize ici (mise à l'échelle Windows 125 / 150 % : l'hôte arrondit les tailles) ;
     // les limites du constrainer (jamais plus petit que la taille par défaut) suffisent
-    proc.uiHeight.store (jlimit (art::heightPct50, art::heightMax, getHeight()));
+    proc.uiHeight.store (jlimit (defaultH, maxH, getHeight()));
     resizeSettle = 4;              // le fond sera refait par le timer quand la taille ne bouge plus
-    const float s = (float) getWidth() / art::W;
-    auto place = [s] (Component& c, const art::Circle& k, float scale = 1.0f)
+    const float s = (float) getHeight() / baseH;
+    auto place = [s] (Component& c, Point<float> centre, float size)
     {
-        const float d = k.r * 2.0f * s * scale;
-        c.setBounds (Rectangle<float> (d, d).withCentre ({ k.x * s, k.y * s }).toNearestInt());
+        c.setBounds (Rectangle<float> (size * s, size * s).withCentre ({ centre.x * s, centre.y * s }).toNearestInt());
     };
-    for (int i = 0; i < 7; ++i) place (knob[i], art::knobs[i]);
-    place (modeButton, art::modeBtn, ModeButton::kPad);
-    place (footSwitch, art::footswitch, FootSwitch::kPad);
-    status.setBounds (Rectangle<float> (art::statusX * s, art::statusY * s, art::statusW * s, art::statusH * s).toNearestInt());
+    for (int i = 0; i < 7; ++i) place (*knob[(size_t) i], layout::knobPos[i], layout::knobComp);
+    place (modeLamp,   layout::modeLedPos,   layout::ledS * Lamp::kPad);
+    place (freezeLamp, layout::freezeLedPos, layout::ledS * Lamp::kPad);
+    place (footSwitch, layout::fsPos,        layout::fsS);
 }

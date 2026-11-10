@@ -5,7 +5,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "macOS minimum")
 endif()
 
-project(FreezeShimmer VERSION 1.3.1 LANGUAGES C CXX)
+project(FreezeShimmer VERSION 1.4.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -46,7 +46,11 @@ juce_add_plugin(FreezeShimmer
   EDITOR_WANTS_KEYBOARD_FOCUS FALSE
   COPY_PLUGIN_AFTER_BUILD    ${FS_COPY_AFTER_BUILD})
 
-juce_add_binary_data(FreezeShimmerAssets SOURCES Assets/background.jpg Assets/background_1x.jpg)
+juce_add_binary_data(FreezeShimmerAssets SOURCES
+  Assets/background.png Assets/led_on.png
+  Assets/knob_shadow.png Assets/knob_crown.png Assets/knob_cap.png Assets/knob_marker.png Assets/knob_highlight.png
+  Assets/Poppins-Regular.ttf Assets/Poppins-Medium.ttf Assets/Poppins-Bold.ttf
+  Assets/NineHandsLogoWhite.svg)
 
 target_sources(FreezeShimmer PRIVATE
   Source/PluginProcessor.cpp
@@ -54,6 +58,10 @@ target_sources(FreezeShimmer PRIVATE
   Source/PluginEditor.cpp
   Source/PluginEditor.h
   Source/Params.h
+  Source/Layout.h
+  Source/NHKnob.h
+  Source/NineHandsMenu.h
+  Source/NineHandsGlow.h
   Source/dsp/Util.h
   Source/dsp/FFT.h
   Source/dsp/PitchShifter.h
