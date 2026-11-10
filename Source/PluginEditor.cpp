@@ -681,10 +681,10 @@ void FreezeShimmerEditor::timerCallback()
         if (gp != glowPct) { glowPct = gp; modeLamp.repaint(); freezeLamp.repaint(); footSwitch.repaint(); }
     }
 
-    // lampes : MODE = page B ; FREEZE = freeze actif (fondu) ; anneau du footswitch = freeze actif
+    // lampes : MODE = page B ; LED centrale = effet actif (engage, éteinte = bypass) ; halo du footswitch = freeze actif
     const bool frozen = proc.frozenState.load();
     if (modeLamp.step (page() == 1 ? 1.0f : 0.0f))   askRepaint (modeLamp);
-    if (freezeLamp.step (frozen ? 1.0f : 0.0f))      askRepaint (freezeLamp);
+    if (freezeLamp.step (getBool ("engage") ? 1.0f : 0.0f)) askRepaint (freezeLamp);
     if (footSwitch.step (frozen ? 1.0f : 0.0f))      askRepaint (footSwitch);
 
     // MIDI Learn : attente puis confirmation 2 s dans la ligne d'état

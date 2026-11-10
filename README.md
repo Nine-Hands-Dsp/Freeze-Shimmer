@@ -5,7 +5,7 @@ Plugin d'effet **VST3** « Frozen Cosmic Reverb » par **NINE HANDS | DSP**, qui
 - un **shimmer / cosmic reverb** inspiré de la *Pico Shimmer* (3 scènes, retard, modulation) ;
 - un **freeze / sound retainer** inspiré de la *Pico Deep Freeze* (sustain infini, couches, glissando).
 
-L'interface (v1.4.0) est une pédale givrée **plein cadre** : potards à calques animés (flou de mouvement, lumière en haut à gauche), textes et logo en vectoriel, LED MODE (page B) et LED FREEZE, anneau lumineux autour du footswitch quand le freeze est actif, pastille unique « presets / ligne d'état », menus clic droit au design d'Octopus avec réglage **Glow** (25 / 50 / 75 / 100 %). Fenêtre par défaut « 60 % », non réductible en dessous.
+L'interface (v1.4.1) est une pédale givrée **plein cadre** : potards à calques animés (flou de mouvement, lumière en haut à gauche), textes et logo en vectoriel, LED MODE (page B) et LED centrale (effet actif / bypass), halo lumineux autour du footswitch quand le freeze est actif, pastille unique « presets / ligne d'état », menus clic droit au design d'Octopus avec réglage **Glow** (25 / 50 / 75 / 100 %). Fenêtre par défaut « 60 % », non réductible en dessous.
 
 > **Précision importante.** Les algorithmes des pédales Electro-Harmonix sont propriétaires, et le schéma fourni
 > décrit le câblage matériel (3 potentiomètres, interrupteurs SPDT, footswitch, LED, entrée/sortie), pas l'algorithme audio.
@@ -88,7 +88,7 @@ sous Linux et publie les zips (`FreezeShimmer-win64.zip`, `FreezeShimmer-macos.z
 - **Bouton MODE** (haut) : clic = scène suivante (**INTERGALACTIC** vert · **OFF-WORLD** orange · **ETHERDUST** rouge) ;
   `Maj`+clic = mode freeze suivant (**LATCH · MOMENT · AUTO**) ; maintien ~1 s = bascule page A/B ;
   **molette** = preset suivant / précédent ; clic droit = menu complet (presets, taille (*Plugin size*), scène, mode, page, bypass, canal MIDI, table MIDI).
-- **LED unique** (au-dessus de MODE) : éteinte en bypass · **bleu fixe** pédale active · **bleu clignotant** freeze actif.
+- **LED centrale** : éteinte en bypass · allumée effet actif ; le **halo du footswitch** indique le freeze.
 - **Footswitch** (bas) : **appui maintenu** = freeze · **double-clic** = arrête le freeze (voir ci-dessous). Bypass : clic droit → menu, ou MIDI (après MIDI Learn).
 - **Double-clic** sur un bouton = valeur par défaut. Glisser verticalement, ou molette.
 

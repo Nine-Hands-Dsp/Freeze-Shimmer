@@ -10,7 +10,7 @@ class FreezeShimmerEditor;
 
 //==============================================================================
 // Lampe (LED du kit photo) : la LED éteinte est dans le fond ; allumée = lentille + halo sur la façade (halo dosé par Glow).
-// MODE : lampe cliquable (page B allumée). FREEZE : lampe seule (allumée quand le freeze est actif).
+// MODE : lampe cliquable (page B allumée). Lampe centrale : effet actif (éteinte = bypass).
 class Lamp : public juce::Component, private juce::Timer
 {
 public:
