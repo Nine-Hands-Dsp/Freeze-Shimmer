@@ -5,7 +5,7 @@ Plugin d'effet **VST3** « Frozen Cosmic Reverb » par **NINE HANDS | DSP**, qui
 - un **shimmer / cosmic reverb** inspiré de la *Pico Shimmer* (3 scènes, retard, modulation) ;
 - un **freeze / sound retainer** inspiré de la *Pico Deep Freeze* (sustain infini, couches, glissando).
 
-L'interface (v1.5.1) est une pédale givrée **plein cadre** : potards à calques animés (flou de mouvement, lumière en haut à gauche), textes et logo en vectoriel, LED MODE (page B) et LED centrale (effet actif / bypass), halo lumineux qui pulse autour du footswitch quand le freeze est actif, pastille unique « presets / ligne d'état », menus clic droit au design d'Octopus avec réglage **Glow** (25 / 50 / 75 / 100 %). Fenêtre par défaut « 60 % », non réductible en dessous.
+L'interface (v1.5.2) est une pédale givrée **plein cadre** : potards à calques animés (flou de mouvement, lumière en haut à gauche), textes et logo en vectoriel, LED MODE (blanche en page A, bleue en page B) et LED centrale (effet actif / bypass), halo lumineux qui pulse autour du footswitch quand le freeze est actif, pastille unique « presets / ligne d'état », menus clic droit au design d'Octopus avec réglage **Glow** (25 / 50 / 75 / 100 %). Fenêtre par défaut « 60 % », non réductible en dessous.
 
 > **Précision importante.** Les algorithmes des pédales Electro-Harmonix sont propriétaires, et le schéma fourni
 > décrit le câblage matériel (3 potentiomètres, interrupteurs SPDT, footswitch, LED, entrée/sortie), pas l'algorithme audio.

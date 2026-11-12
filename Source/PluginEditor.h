@@ -15,21 +15,22 @@ class FreezeShimmerEditor;
 class Lamp : public juce::Component, private juce::Timer
 {
 public:
-    Lamp (FreezeShimmerEditor& e, juce::Image lens, bool interactive) : owner (e), lensOn (std::move (lens)), clickable (interactive) {}
+    Lamp (FreezeShimmerEditor& e, juce::Image lens, bool interactive) : owner (e), lensOn (std::move (lens)), clickable (interactive) { makeWhiteLens(); }
     void paint (juce::Graphics&) override;
     bool hitTest (int x, int y) override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
-    bool step (float target);       // fondu vers la cible ; vrai si l'affichage doit changer
+    bool step (float target, float colourMix = 0.0f);   // fondu vers la cible (et vers la couleur : 0 blanc, 1 bleu) ; vrai si l'affichage doit changer
     static constexpr float kPad = 3.5f;   // composant = kPad x la LED (place du halo)
 private:
     void timerCallback() override { stopTimer(); longFired = true; owner_togglePage(); }
     void owner_togglePage();
     FreezeShimmerEditor& owner;
-    juce::Image lensOn;
+    void makeWhiteLens();
+    juce::Image lensOn, lensWhite;
     bool clickable, longFired = false;
-    float level = 0.0f, drawnLevel = -1.0f;
+    float level = 0.0f, drawnLevel = -1.0f, colMix = 0.0f, drawnMix = -1.0f;
 };
 
 //==============================================================================

@@ -54,12 +54,31 @@ bool Lamp::hitTest (int x, int y)
     return c.getDistanceFrom (Point<float> ((float) x, (float) y)) <= R;
 }
 
-bool Lamp::step (float target)
+// lentille blanche : la lentille bleue désaturée (même relief, même lumière)
+void Lamp::makeWhiteLens()
+{
+    if (lensOn.isNull()) return;
+    lensWhite = lensOn.createCopy();
+    Image::BitmapData bd (lensWhite, Image::BitmapData::readWrite);
+    for (int y = 0; y < bd.height; ++y)
+        for (int x = 0; x < bd.width; ++x)
+        {
+            auto c = bd.getPixelColour (x, y);
+            const float a = c.getFloatAlpha();
+            if (a <= 0.0f) continue;
+            const float l = jmin (1.0f, (0.2126f * c.getFloatRed() + 0.7152f * c.getFloatGreen() + 0.0722f * c.getFloatBlue()) * 1.25f);
+            bd.setPixelColour (x, y, Colour::fromFloatRGBA (l, l, l * 0.985f, a));
+        }
+}
+
+bool Lamp::step (float target, float colourMix)
 {
     level += (target - level) * (target > level ? 0.45f : 0.28f);
     if (level < 0.003f) level = 0.0f;
     if (level > 0.997f) level = 1.0f;
-    if (std::abs (level - drawnLevel) > 0.004f) { drawnLevel = level; return true; }
+    colMix += (colourMix - colMix) * 0.35f;
+    if (std::abs (colMix - colourMix) < 0.01f) colMix = colourMix;
+    if (std::abs (level - drawnLevel) > 0.004f || std::abs (colMix - drawnMix) > 0.004f) { drawnLevel = level; drawnMix = colMix; return true; }
     return false;
 }
 
@@ -71,7 +90,7 @@ void Lamp::paint (Graphics& g)
     const float R = (float) getWidth() * 0.5f;
     // halo sur la façade (dosé par Glow) : la lentille elle-même reste à pleine intensité
     const float peak = 0.55f * level * owner.glowK();
-    const Colour col (60, 170, 255);
+    const Colour col = Colour (235, 242, 250).interpolatedWith (Colour (60, 170, 255), colMix);
     ColourGradient gr (col.withAlpha (peak), c.x, c.y, col.withAlpha (0.0f), c.x + R, c.y, true);
     gr.addColour (0.133, col.withAlpha (peak * 0.88f));
     gr.addColour (0.267, col.withAlpha (peak * 0.64f));
@@ -82,9 +101,10 @@ void Lamp::paint (Graphics& g)
     g.fillEllipse (Rectangle<float> (R * 2.0f, R * 2.0f).withCentre (c));
     if (lensOn.isValid())
     {
-        g.setOpacity (level);
+        const auto r = Rectangle<float> (layout::ledS * u, layout::ledS * u).withCentre (c);
         g.setImageResamplingQuality (Graphics::highResamplingQuality);
-        g.drawImage (lensOn, Rectangle<float> (layout::ledS * u, layout::ledS * u).withCentre (c));
+        if (lensWhite.isValid() && colMix < 0.999f) { g.setOpacity (level * (1.0f - colMix)); g.drawImage (lensWhite, r); }
+        g.setOpacity (level * colMix); g.drawImage (lensOn, r);
         g.setOpacity (1.0f);
     }
 }
@@ -695,9 +715,9 @@ void FreezeShimmerEditor::timerCallback()
         if (gp != glowPct) { glowPct = gp; modeLamp.repaint(); freezeLamp.repaint(); footSwitch.repaint(); }
     }
 
-    // lampes : MODE = page B ; LED centrale = effet actif (engage, éteinte = bypass) ; halo du footswitch = freeze actif
+    // lampes : MODE = toujours allumée, blanche en page A, bleue en page B ; LED centrale = effet actif (engage, éteinte = bypass) ; halo du footswitch = freeze actif
     const bool frozen = proc.frozenState.load();
-    if (modeLamp.step (page() == 1 ? 1.0f : 0.0f))   askRepaint (modeLamp);
+    if (modeLamp.step (1.0f, page() == 1 ? 1.0f : 0.0f)) askRepaint (modeLamp);
     if (freezeLamp.step (getBool ("engage") ? 1.0f : 0.0f)) askRepaint (freezeLamp);
     // halo du footswitch : il pulse doucement tant que le freeze est actif (comme l'ancienne pédale)
     const float pulse = frozen ? 0.72f + 0.28f * std::sin ((float) Time::getMillisecondCounter() * 0.004f) : 0.0f;
