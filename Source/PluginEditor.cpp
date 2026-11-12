@@ -699,7 +699,9 @@ void FreezeShimmerEditor::timerCallback()
     const bool frozen = proc.frozenState.load();
     if (modeLamp.step (page() == 1 ? 1.0f : 0.0f))   askRepaint (modeLamp);
     if (freezeLamp.step (getBool ("engage") ? 1.0f : 0.0f)) askRepaint (freezeLamp);
-    if (footSwitch.step (frozen ? 1.0f : 0.0f))      askRepaint (footSwitch);
+    // halo du footswitch : il pulse doucement tant que le freeze est actif (comme l'ancienne pédale)
+    const float pulse = frozen ? 0.72f + 0.28f * std::sin ((float) Time::getMillisecondCounter() * 0.004f) : 0.0f;
+    if (footSwitch.step (pulse))                     askRepaint (footSwitch);
 
     // MIDI Learn : attente puis confirmation 2 s dans la ligne d'état
     {

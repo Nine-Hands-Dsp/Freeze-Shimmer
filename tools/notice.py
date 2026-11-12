@@ -4,7 +4,7 @@
 # La capture des menus du clic droit de la v1.2.0 (« Window size », « Reset MIDI to defaults (CC ...) ») a ete retiree :
 # elle montrait l'ancien menu et le depot n'a pas d'outil de rendu (tools/render) pour la refaire.
 # Polices : assets/fonts (Poppins + DejaVuSans pour les fleches). Code compile : Source/ (les copies a la racine ne servent plus).
-# Contenu verifie contre Source/PluginEditor.cpp / Source/PluginProcessor.cpp (v1.4.1). Pas d'historique des versions dans le PDF.
+# Contenu verifie contre Source/PluginEditor.cpp / Source/PluginProcessor.cpp (v1.5.1). Pas d'historique des versions dans le PDF.
 import os, sys
 from PIL import Image
 from reportlab.lib.pagesizes import A4
@@ -18,8 +18,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "docs", "FreezeShimmer_Notice_FR_v1.4.1.pdf")
-VERSION = "1.4.1"
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "docs", "FreezeShimmer_Notice_FR_v1.5.1.pdf")
+VERSION = "1.5.1"
 FONTS = os.path.join(ROOT, "assets", "fonts")
 A = os.path.join(ROOT, "tools", "manual_assets")
 
@@ -82,10 +82,10 @@ T = {
      ["5", "SPEED / LAYER", "Temps de fondu du freeze / nombre de couches."], ["6", "VOICE / DEPTH", "Plate → shimmer → cordes / profondeur de modulation."],
      ["7", "TONE / RATE / GLISS", "Brillance / vitesse de modulation / fondu entre deux freezes."],
      ["8", "LED MODE (bouton)", "Scène, mode de freeze, page, presets ; allumée = page B."], ["9", "LED centrale (bypass)", "Allumée : effet actif ; éteinte : bypass."],
-     ["10", "Footswitch", "Freeze (maintien), relâche (double-clic) ; halo bleu lumineux pendant le freeze."],
+     ["10", "Footswitch", "Freeze (maintien), relâche (double-clic) ; halo bleu lumineux qui pulse pendant le freeze."],
      ["11", "Pastille presets / état", "Au repos : preset (◀ ▶, clic sur le nom pour la liste). Dès qu'un réglage bouge : valeur lisible, valeur MIDI, messages du MIDI Learn."]],
  ov_note=["Double-clic sur un potard : valeur par défaut. Glisse verticalement ou utilise la molette. Clic droit sur un potard, MODE ou le footswitch : son MIDI Learn.",
-          "La LED MODE est allumée en page B (les potards de la page B portent un liseré bleu). La LED centrale indique l'état de l'effet : allumée quand il est actif, éteinte en bypass. Le freeze est indiqué par le halo bleu autour du footswitch. Leur halo se règle par clic droit &gt; <b>Glow (halo of the lights)</b> : 25, 50, 75 ou 100 % (le cœur des lumières reste toujours à pleine intensité)."],
+          "La LED MODE est allumée en page B (les potards de la page B portent un liseré bleu). La LED centrale indique l'état de l'effet : allumée quand il est actif, éteinte en bypass. Le freeze est indiqué par le halo bleu qui pulse autour du footswitch. Leur halo se règle par clic droit &gt; <b>Glow (halo of the lights)</b> : 25, 50, 75 ou 100 % (le cœur des lumières reste toujours à pleine intensité)."],
  ctl_t="4. Commandes",
  ctl_intro="Chaque potard a deux fonctions. La page A (étiquettes blanches) est celle par défaut ; la page B (étiquettes bleues) s'obtient en maintenant MODE environ une seconde.",
  kn_hdr=["Potard", "Page A", "Page B"],
