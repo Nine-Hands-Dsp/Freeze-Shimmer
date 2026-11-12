@@ -5,7 +5,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "macOS minimum")
 endif()
 
-project(FreezeShimmer VERSION 1.4.1 LANGUAGES C CXX)
+project(FreezeShimmer VERSION 1.5.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,6 +68,17 @@ target_sources(FreezeShimmer PRIVATE
   Source/dsp/Reverb.h
   Source/dsp/ShimmerEngine.h
   Source/dsp/FreezeEngine.h)
+
+# verrou de taille de la fenetre du DAW (jamais sous 60 %, jamais au-dela de 150 %)
+if(APPLE)
+  target_sources(FreezeShimmer PRIVATE Source/WindowMinSize.mm)
+  target_link_libraries(FreezeShimmer PRIVATE "-framework Cocoa")
+else()
+  target_sources(FreezeShimmer PRIVATE Source/WindowMinSize.cpp)
+endif()
+if(WIN32)
+  target_link_libraries(FreezeShimmer PRIVATE comctl32 user32)
+endif()
 
 target_compile_definitions(FreezeShimmer PUBLIC
   JUCE_WEB_BROWSER=0

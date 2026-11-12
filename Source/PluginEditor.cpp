@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "BinaryData.h"
-#include "../WigaWindowSize.h"
+#include "WigaWindowSize.h"
+#include "NineHandsUserPresets.h"
 
 using namespace juce;
 
@@ -211,7 +212,7 @@ FreezeShimmerEditor::FreezeShimmerEditor (FreezeShimmerProcessor& p)
     if (auto xml = XmlDocument::parse (String::fromUTF8 (BinaryData::NineHandsLogoWhite_svg, BinaryData::NineHandsLogoWhite_svgSize)))
         logo = Drawable::createFromSVG (*xml);
     menuLnf.f = { regFace, medFace, boldFace };
-    glowPct = NineHandsGlow::read (JucePlugin_Name);
+    glowPct = NineHandsGlow::percent (JucePlugin_Name);
 
     nh::Knob::Layers L;
     L.shadow    = ImageCache::getFromMemory (BinaryData::knob_shadow_png,    BinaryData::knob_shadow_pngSize);
@@ -242,11 +243,11 @@ FreezeShimmerEditor::FreezeShimmerEditor (FreezeShimmerProcessor& p)
     setResizable (true, true);
     setResizeLimits (roundToInt ((double) defaultH * aspect), defaultH, roundToInt ((double) maxH * aspect), maxH);
     getConstrainer()->setFixedAspectRatio (aspect);
+    hostLock.setLimits (roundToInt ((double) defaultH * aspect), defaultH, roundToInt ((double) maxH * aspect), maxH);
     setOpaque (true);                      // anti-gel : l'hôte ne redessine jamais ce qui est derrière la fenêtre
     // taille mémorisée dans le projet pour cette instance si elle existe (>= taille par défaut), sinon celle choisie dans
     // le menu « Default size (new windows) »
-    const int saved = proc.uiHeight.load();
-    const int h0 = (saved > defaultH && saved <= maxH) ? saved : sizeHeight (WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes));
+    const int h0 = sizeHeight (NineHandsWindow::openIndex (JucePlugin_Name, proc.uiSizeIdx.load(), numSizes));   // taille du projet, sinon taille par defaut
     setSize (roundToInt ((double) h0 * aspect), h0);
     rebuildCaches();
     lastPresetSeen = proc.presetIndex.load();
@@ -310,6 +311,7 @@ void FreezeShimmerEditor::setWindowHeight (int h)
 {
     h = jlimit (defaultH, maxH, h);
     setSize (roundToInt ((double) h * (double) baseW / (double) baseH), h);
+    hostLock.enforce();
 }
 
 void FreezeShimmerEditor::cycleScene() { setChoice ("scene", (choice ("scene") + 1) % 3); }
@@ -376,13 +378,11 @@ void FreezeShimmerEditor::addSizeItems (PopupMenu& sizes)
 
 bool FreezeShimmerEditor::handleSizeResult (int r)
 {
-    if (r >= 301 && r < 301 + numSizes)      setWindowHeight (sizeHeight (r - 301));
-    else if (r >= 320 && r < 320 + numSizes)
-    {
-        WigaWindowSize::setDefaultIndex (JucePlugin_Name, r - 320);   // toutes les nouvelles fenêtres de ce plugin
-        setWindowHeight (sizeHeight (r - 320));                      // et cette fenêtre tout de suite
-    }
-    else return false;
+    int inst = proc.uiSizeIdx.load();
+    const int sz = NineHandsWindow::handleSize (r, JucePlugin_Name, numSizes, inst);
+    if (sz < 0) return false;
+    proc.uiSizeIdx = inst;
+    setWindowHeight (sizeHeight (sz));
     return true;
 }
 
@@ -397,9 +397,10 @@ void FreezeShimmerEditor::addGlowItems (PopupMenu& m)
 
 bool FreezeShimmerEditor::handleGlowResult (int r)
 {
-    if (r < 625 || r > 700 || (r - 600) % 25 != 0) return false;
-    glowPct = r - 600;
-    NineHandsGlow::write (JucePlugin_Name, glowPct);
+    const int pc = NineHandsWindow::handleGlow (r, JucePlugin_Name);
+    if (pc == 0) return false;
+    glowPct = pc;
+    NineHandsGlow::setPercent (JucePlugin_Name, glowPct);
     flash ("Glow  " + String (glowPct) + " %");
     modeLamp.repaint(); freezeLamp.repaint(); footSwitch.repaint();
     return true;
@@ -450,96 +451,108 @@ bool FreezeShimmerEditor::handleLearnResult (int r)
     return true;
 }
 
-void FreezeShimmerEditor::showMainMenu (int learnA, int learnB, const String& header)
+PopupMenu FreezeShimmerEditor::buildContextMenu (int learnIdx)
 {
-    PopupMenu m, scenes, modes, chans, presets, sizes;
-    if (learnA >= 0)
-        addLearnSection (m, header, learnA, learnB, learnA == FreezeShimmerProcessor::kLearnFreeze ? NineHandsMenu::icoSwitch : NineHandsMenu::icoPedal);
-    else
-        NineHandsMenu::addHeader (m, menuLnf.f, NineHandsMenu::icoPedal, kAccent, "Freeze Shimmer", "Reverb  v" + String (JucePlugin_VersionString));
+    using namespace NineHandsMenu;
+    PopupMenu m;
+    m.setLookAndFeel (&menuLnf);
+    const int lt = proc.learnTarget.load();
+    auto ccText = [this] (int i) { const int cc = proc.ccMap[i].load(); return cc >= 0 ? "CC " + String (cc) : String ("not assigned"); };
+    if (learnIdx >= 0)
+    {
+        // menu d'une commande (tronc commun) : en-tete, MIDI Learn, Clear MIDI, Cancel MIDI learn
+        const String name = FreezeShimmerProcessor::learnDef (learnIdx).name;
+        addHeader (m, menuLnf.f, learnIdx < fsp::kNumKnobs ? icoKnob : learnIdx == FreezeShimmerProcessor::kLearnFreeze ? icoPedal : icoSwitch,
+                   ::kAccent, name, "MIDI: " + ccText (learnIdx));
+        m.addItem (1000 + learnIdx, "MIDI Learn: " + name, true, lt == learnIdx);
+        m.addItem (1100 + learnIdx, "Clear MIDI: " + name, proc.ccMap[learnIdx].load() >= 0);
+        m.addItem (1200, "Cancel MIDI learn", lt >= 0);
+        return m;
+    }
+
+    addHeader (m, menuLnf.f, icoPedal, ::kAccent, "Freeze Shimmer", "Reverb  v" + String (JucePlugin_VersionString));
+    PopupMenu presets, scenes, modes;
+    for (int i = 0; i < fsp::kNumPresets; ++i)
+        presets.addItem (200 + i, String (i + 1) + ". " + niceName (fsp::kPresets[i].name), true, proc.presetIndex.load() == i && userSlot == 0);
+    m.addSubMenu ("Factory presets", presets);
+    NineHandsUserPresets::addMenus (m, "Freeze Shimmer", 400, 500, userSlot);
+    m.addSeparator();
     for (int i = 0; i < 3; ++i) scenes.addItem (1 + i, fsp::kSceneNames[i], true, choice ("scene") == i);
     for (int i = 0; i < 3; ++i) modes.addItem (11 + i, fsp::kModeNames[i], true, choice ("fmode") == i);
-    for (int i = 0; i < 17; ++i) chans.addItem (100 + i, i == 0 ? String ("OMNI") : String (i), true, choice ("midichan") == i);
-    for (int i = 0; i < fsp::kNumPresets; ++i)
-        presets.addItem (200 + i, String (i + 1) + "  " + niceName (fsp::kPresets[i].name), true, proc.presetIndex.load() == i);
-    addSizeItems (sizes);
-    m.addSubMenu ("Presets", presets);
-    m.addSubMenu ("Plugin size", sizes);
-    addGlowItems (m);
-    m.addSeparator();
     m.addSubMenu ("Scene (shimmer)", scenes);
     m.addSubMenu ("Mode freeze", modes);
-    m.addSeparator();
     m.addItem (21, "Knobs: page A (primary)", true, page() == 0);
     m.addItem (22, "Knobs: page B (secondary, blue)", true, page() == 1);
-    m.addSeparator();
     m.addItem (30, "Effect on (bypass when unticked)", true, getBool ("engage"));
     m.addItem (31, "Stop the freeze (or double-click footswitch)");
     m.addSeparator();
-    m.addSubMenu ("MIDI channel", chans);
-    addMidiLearnSubMenu (m);
-    m.addItem (40, "MIDI map...");
+
+    PopupMenu midi;
+    midi.addSectionHeader ("MIDI Learn");
+    for (int i = 0; i < FreezeShimmerProcessor::kNumLearn; ++i)
+        midi.addItem (1000 + i, "Learn: " + String (FreezeShimmerProcessor::learnDef (i).name) + "  (" + ccText (i) + ")", true, lt == i);
+    midi.addSeparator();
+    midi.addItem (1200, "Cancel MIDI learn", lt >= 0);
+    midi.addItem (1201, "Clear all MIDI assignments");
+    midi.addSeparator();
+    NineHandsWindow::addMidiFootswitchMode (midi, ! proc.midiFsMomentary.load());
+    midi.addSeparator();
+    NineHandsWindow::addProgramChangeInfo (midi);
+    m.addSubMenu ("MIDI", midi);
     m.addSeparator();
-    m.addItem (999, "Freeze Shimmer v" + String (JucePlugin_VersionString) + " - NINE HANDS | DSP", false);
-    m.setLookAndFeel (&menuLnf);
+
+    const char* names[numSizes] = { "60 %", "75 %", "100 %" };
+    const int heights[numSizes] = { sizeHeight (0), sizeHeight (1), sizeHeight (2) };
+    m.addSubMenu ("Plugin size", NineHandsWindow::sizeMenu (JucePlugin_Name, numSizes, names, heights, getHeight()));
+    m.addSubMenu ("Glow intensity", NineHandsWindow::glowMenu (glowPct));
+    return m;
+}
+
+void FreezeShimmerEditor::handleMenuResult (int r)
+{
+    if (r == 0 || r == 9001) return;
+    if (handleLearnResult (r) || handleGlowResult (r) || handleSizeResult (r)) return;
+    if (r == NineHandsWindow::idLatch || r == NineHandsWindow::idMomentary) proc.midiFsMomentary = r == NineHandsWindow::idMomentary;
+    else if (r >= 1 && r <= 3)   setChoice ("scene", r - 1);
+    else if (r >= 11 && r <= 13) setChoice ("fmode", r - 11);
+    else if (r == 21)            setPage (0);
+    else if (r == 22)            setPage (1);
+    else if (r == 30)            setBool ("engage", ! getBool ("engage"));
+    else if (r == 31)            proc.postCommand (FreezeShimmerProcessor::cmdRelease);
+    else if (r >= 200 && r < 200 + fsp::kNumPresets) { loadPreset (r - 200); userSlot = 0; }
+    else if (r > 400 && r < 410) { if (NineHandsUserPresets::load (proc, "Freeze Shimmer", r - 400)) { userSlot = r - 400; flash ("User " + String (userSlot)); } }
+    else if (r > 500 && r < 510) { if (NineHandsUserPresets::save (proc, "Freeze Shimmer", r - 500, { "midichan" })) { userSlot = r - 500; flash ("Saved  User " + String (userSlot)); } }
+}
+
+void FreezeShimmerEditor::showMainMenu (int learnA, int learnB, const String& header)
+{
+    ignoreUnused (learnB, header);
+    auto m = buildContextMenu (learnA);
     m.showMenuAsync (PopupMenu::Options().withMousePosition(),      // toujours là où l'on clique
-        [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r)
-        {
-            if (safe == nullptr || r == 0) return;
-            auto& ed = *safe;
-            if (ed.handleLearnResult (r) || ed.handleGlowResult (r) || ed.handleSizeResult (r)) return;
-            if (r >= 1 && r <= 3)        ed.setChoice ("scene", r - 1);
-            else if (r >= 11 && r <= 13) ed.setChoice ("fmode", r - 11);
-            else if (r == 21)            ed.setPage (0);
-            else if (r == 22)            ed.setPage (1);
-            else if (r == 30)            ed.setBool ("engage", ! ed.getBool ("engage"));
-            else if (r == 31)            ed.proc.postCommand (FreezeShimmerProcessor::cmdRelease);
-            else if (r == 40)            ed.showMidiMap();
-            else if (r >= 100 && r <= 116) ed.setChoice ("midichan", r - 100);
-            else if (r >= 200 && r < 200 + fsp::kNumPresets) ed.loadPreset (r - 200);
-        });
+        [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r) { if (safe != nullptr) safe->handleMenuResult (r); });
 }
 
 void FreezeShimmerEditor::showKnobMenu (int k)
 {
-    const int pi = knobParamIndex (k);
-    PopupMenu m, sizes;
-    addLearnSection (m, fsp::kKnobs[pi].name, pi);
-    addSizeItems (sizes);
-    m.addSubMenu ("Plugin size", sizes);
-    addGlowItems (m);
-    m.addSeparator();
-    addMidiLearnSubMenu (m);
-    m.setLookAndFeel (&menuLnf);
+    auto m = buildContextMenu (knobParamIndex (k));
     m.showMenuAsync (PopupMenu::Options().withMousePosition(),
-        [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r)
-        {
-            if (safe == nullptr || r == 0) return;
-            if (safe->handleLearnResult (r) || safe->handleGlowResult (r)) return;
-            safe->handleSizeResult (r);
-        });
+        [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r) { if (safe != nullptr) safe->handleMenuResult (r); });
 }
 
 void FreezeShimmerEditor::showKnob7Menu()
 {
-    PopupMenu m, sizes;
-    addLearnSection (m, fsp::kKnobs[knobParamIndex (6)].name, knobParamIndex (6));
+    // tronc commun, plus le choix TONE / RATE / GLISS propre a ce bouton
+    auto m = buildContextMenu (knobParamIndex (6));
+    m.addSeparator();
     m.addItem (1, "TONE / RATE (follows the page)", true, ! knob7Gliss);
     m.addItem (2, "GLISS (freeze)", true, knob7Gliss);
-    m.addSeparator();
-    addSizeItems (sizes);
-    m.addSubMenu ("Plugin size", sizes);
-    addGlowItems (m);
-    m.addSeparator();
-    addMidiLearnSubMenu (m);
-    m.setLookAndFeel (&menuLnf);
     m.showMenuAsync (PopupMenu::Options().withMousePosition(),
         [safe = Component::SafePointer<FreezeShimmerEditor> (this)] (int r)
         {
             if (safe == nullptr || r == 0) return;
             auto& ed = *safe;
-            if (ed.handleLearnResult (r) || ed.handleGlowResult (r) || ed.handleSizeResult (r)) return;
-            if (r == 1 || r == 2) { ed.knob7Gliss = (r == 2); ed.bindKnobs(); }
+            if (r == 1 || r == 2) { ed.knob7Gliss = (r == 2); ed.bindKnobs(); return; }
+            ed.handleMenuResult (r);
         });
 }
 
@@ -654,6 +667,7 @@ void FreezeShimmerEditor::timerCallback()
 
     // moteur logiciel : seulement si la fenêtre hôte a changé, ou au plus une fois par seconde
     if (getPeer() != lastPeer || now - lastRendererCheckMs > 1000.0) { lastRendererCheckMs = now; useSoftwareRenderer(); }
+    hostLock.track (*this);
 
     // caches : reconstruits ici seulement (jamais dans paint)
     if (resizeSettle > 0 && --resizeSettle == 0) rebuildCaches();
@@ -677,7 +691,7 @@ void FreezeShimmerEditor::timerCallback()
     if (now - lastGlowCheckMs > 3000.0)
     {
         lastGlowCheckMs = now;
-        const int gp = NineHandsGlow::read (JucePlugin_Name);
+        const int gp = NineHandsGlow::percent (JucePlugin_Name);
         if (gp != glowPct) { glowPct = gp; modeLamp.repaint(); freezeLamp.repaint(); footSwitch.repaint(); }
     }
 
@@ -916,14 +930,14 @@ void FreezeShimmerEditor::useSoftwareRenderer()
    #endif
 }
 
-void FreezeShimmerEditor::parentHierarchyChanged() { useSoftwareRenderer(); }
+void FreezeShimmerEditor::parentHierarchyChanged() { useSoftwareRenderer(); hostLock.track (*this); }
 void FreezeShimmerEditor::visibilityChanged()      { useSoftwareRenderer(); if (isShowing()) repaint(); }
 
 void FreezeShimmerEditor::resized()
 {
     // anti-gel : jamais de setSize ici (mise à l'échelle Windows 125 / 150 % : l'hôte arrondit les tailles) ;
     // les limites du constrainer (jamais plus petit que la taille par défaut) suffisent
-    proc.uiHeight.store (jlimit (defaultH, maxH, getHeight()));
+    // seules les tailles choisies au menu sont enregistrees (pas celles tirees au coin)
     resizeSettle = 4;              // le fond sera refait par le timer quand la taille ne bouge plus
     const float s = (float) getHeight() / baseH;
     auto place = [s] (Component& c, Point<float> centre, float size)

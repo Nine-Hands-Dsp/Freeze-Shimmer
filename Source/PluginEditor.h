@@ -5,6 +5,7 @@
 #include "NHKnob.h"
 #include "NineHandsMenu.h"
 #include "NineHandsGlow.h"
+#include "NineHandsWindow.h"
 
 class FreezeShimmerEditor;
 
@@ -89,6 +90,8 @@ public:
     static int sizeHeight (int idx);
     float glowK() const { return (float) glowPct / 100.0f; }
     void showMainMenu (int learnA = -1, int learnB = -1, const juce::String& header = {});
+    juce::PopupMenu buildContextMenu (int learnIdx = -1);   // menu clic droit (aussi pour l'outil de controle des menus)
+    void handleMenuResult (int r);
     juce::String ccLabel (int learnIdx) const;     // « CC n » de l'assignation actuelle (ou « no CC »)
     int  knobParamIndex (int knob) const;          // indice dans fsp::kKnobs du paramètre actuellement lié
     juce::Colour sceneColour() const;
@@ -136,6 +139,8 @@ private:
 
     juce::Typeface::Ptr regFace, medFace, boldFace;
     NineHandsMenu::MenuLnf menuLnf;
+    NineHandsWindow::HostLock hostLock;    // fenetre du DAW : jamais sous 60 %, jamais au-dela de 150 %
+    int userSlot = 0;                      // preset utilisateur charge (1..9), 0 = aucun
     std::unique_ptr<juce::Drawable> logo;
 
     std::unique_ptr<nh::Knob> knob[7];

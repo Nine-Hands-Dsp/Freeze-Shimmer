@@ -56,6 +56,9 @@ public:
 
     // page (A = primaire / B = secondaire "bleue") : purement visuel, conservé avec l'état
     std::atomic<int> uiPage { 0 };
+    std::atomic<int> uiSizeIdx { -1 };      // taille choisie au menu pour ce projet (0..2), -1 = taille par defaut choisie
+    std::atomic<bool> midiFsMomentary { false };   // ENGAGE par CC : false = latching (127 on / 0 off), true = bascule a chaque appui
+    int prevEngageCC = 0;
     std::atomic<int> uiHeight { 493 };      // hauteur de la fenêtre (mémorisée dans le projet)
     std::atomic<int> presetIndex { 0 };
     void applyPreset (int index);

@@ -201,7 +201,13 @@ void FreezeShimmerProcessor::handleMidi (juce::MidiBuffer& midi)
         if (ctl >= 0 && ctl < fsp::kNumKnobs) queueNormalised (ctl, v01);
         else if (ctl == kLearnScene)          queueNormalised (kQScene, (float) juce::jmin (2, val / 43) / 2.0f);
         else if (ctl == kLearnFMode)          queueNormalised (kQFMode, (float) juce::jmin (2, val / 43) / 2.0f);
-        else if (ctl == kLearnEngage)         queueNormalised (kQEngage, val >= 64 ? 1.0f : 0.0f);
+        else if (ctl == kLearnEngage)
+        {
+            if (! midiFsMomentary.load (std::memory_order_relaxed)) queueNormalised (kQEngage, val >= 64 ? 1.0f : 0.0f);   // latching
+            else if (val >= 64 && prevEngageCC < 64)
+                queueNormalised (kQEngage, apvts.getRawParameterValue ("engage")->load() > 0.5f ? 0.0f : 1.0f);          // momentary
+            prevEngageCC = val;
+        }
         else if (ctl == kLearnRelease)        { if (val >= 64) applyCommand (cmdRelease); }
         else if (ctl == kLearnFreeze)
         {
@@ -328,7 +334,8 @@ void FreezeShimmerProcessor::getStateInformation (juce::MemoryBlock& dest)
 {
     auto state = apvts.copyState();
     state.setProperty ("uiPage", uiPage.load(), nullptr);
-    state.setProperty ("uiHeight", uiHeight.load(), nullptr);
+    state.setProperty ("uiSize", uiSizeIdx.load(), nullptr);
+    state.setProperty ("midiFsMomentary", midiFsMomentary.load(), nullptr);
     state.setProperty ("preset", presetIndex.load(), nullptr);
     for (int i = 0; i < kNumLearn; ++i)
         state.setProperty (juce::String ("cc_") + learnDef (i).id, ccMap[i].load(), nullptr);
@@ -343,6 +350,13 @@ void FreezeShimmerProcessor::setStateInformation (const void* data, int size)
             auto vt = juce::ValueTree::fromXml (*xml);
             uiPage.store ((int) vt.getProperty ("uiPage", 0));
             uiHeight.store (juce::jlimit (493, 1479, (int) vt.getProperty ("uiHeight", 493)));
+            {
+                int idx = -1;                       // ancien projet : sa hauteur si c'est une des trois tailles du menu
+                const int hs[3] = { 493, 719, 958 };
+                for (int i = 0; i < 3; ++i) if (vt.hasProperty ("uiHeight") && std::abs (uiHeight.load() - hs[i]) <= 2) idx = i;
+                uiSizeIdx.store (juce::jlimit (-1, 2, (int) vt.getProperty ("uiSize", idx)));
+            }
+            midiFsMomentary.store ((bool) vt.getProperty ("midiFsMomentary", false));
             presetIndex.store (juce::jlimit (0, fsp::kNumPresets - 1, (int) vt.getProperty ("preset", 0)));
             // assignations MIDI Learn (ancien projet sans ces propriétés : non assignées)
             // v1.3.1 : ancienne table d'usine intacte (CC 20-32, 102-106) = jamais modifiée : on la vide
