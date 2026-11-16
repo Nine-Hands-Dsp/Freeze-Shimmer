@@ -57,6 +57,8 @@ public:
                 v.adv[c].assign ((size_t) bins, 0.0f);
                 v.phase[c].assign ((size_t) bins, 0.0f);
             }
+        winEnergy = 0.0f;
+        for (int i = 0; i < N; ++i) winEnergy += win[(size_t) i] * win[(size_t) i];
         reset();
         // gain de resynthèse calibré (voir tests/dsp_test.cpp)
         synthGain = 0.67f;
@@ -70,7 +72,9 @@ public:
             std::fill (inRing[c].begin(), inRing[c].end(), 0.0f);
             std::fill (outRing[c].begin(), outRing[c].end(), 0.0f);
         }
-        for (auto& v : voices) { v.gain = 0; v.target = 0; v.used = false; v.age = 0; }
+        for (auto& v : voices) { v.gain = 0; v.target = 0; v.used = false; v.age = 0; v.rms2 = 0; v.eg = 0; }
+        for (auto& h : powerHist) h = 0.0f;
+        histIdx = 0; levelPrev = levelNext = 1.0f;
         writePos = 0; outPos = 0; hopCount = 0; captureCounter = 0; ageCounter = 0;
         frozenFlag = false; autoCountdown = -1; autoEnv = 0; autoSlow = 0; sinceAuto = 1 << 30;
         momentHeld = false; holding = false; holdVoice = -1; lastCaptured = -1; refreshCountdown = 0;
@@ -140,8 +144,10 @@ public:
 
             if (++hopCount >= hop) { hopCount = 0; synthHop(); }
 
-            outL[i] = outRing[0][(size_t) outPos];
-            outR[i] = outRing[1][(size_t) outPos];
+            // correction de niveau (voir synthHop) : rampe d'un hop à l'autre, sans saut
+            const float lg = levelPrev + (levelNext - levelPrev) * ((float) hopCount / (float) hop);
+            outL[i] = outRing[0][(size_t) outPos] * lg;
+            outR[i] = outRing[1][(size_t) outPos] * lg;
             outRing[0][(size_t) outPos] = 0.0f;
             outRing[1][(size_t) outPos] = 0.0f;
             outPos = (outPos + 1) % N;
@@ -155,6 +161,8 @@ private:
     {
         std::vector<float> mag[2], adv[2], phase[2];
         float gain = 0.0f, target = 0.0f;
+        float eg = 0.0f;      // gain effectif (fondu à puissance constante)
+        float rms2 = 0.0f;    // puissance moyenne (par échantillon) du son à l'instant de la capture
         bool used = false;
         uint32_t age = 0;
         float fadeTime = 0.1f;
@@ -182,6 +190,9 @@ private:
         start = ((start % ringSize) + ringSize) % ringSize;
         for (int i = 0; i < N; ++i)
             dst[(size_t) i] = std::complex<float> (inRing[c][(size_t) ((start + i) % ringSize)] * win[(size_t) i], 0.0f);
+        float e = 0.0f;
+        for (int i = 0; i < N; ++i) e += dst[(size_t) i].real() * dst[(size_t) i].real();
+        lastFrameEnergy = e;
         fft.forward (dst.data());
     }
 
@@ -198,10 +209,13 @@ private:
         }
         Voice& v = voices[(size_t) idx];
 
+        float energy = 0.0f;
         for (int c = 0; c < 2; ++c)
         {
             analyse (c, 0, tmpB);        // trame la plus récente
+            energy += lastFrameEnergy;
             analyse (c, hop, tmpA);      // trame précédente (un hop plus tôt)
+            energy += lastFrameEnergy;
             for (int k = 0; k < bins; ++k)
             {
                 const auto a = tmpA[(size_t) k], b = tmpB[(size_t) k];
@@ -211,6 +225,8 @@ private:
                 v.phase[c][(size_t) k] = std::arg (b);
             }
         }
+        // niveau du son figé = niveau du son à l'instant de la capture (moyenne des 2 trames, 2 canaux, fenêtre de Hann)
+        v.rms2 = energy / (4.0f * winEnergy);
         // fondu d'entrée : SPEED s'il n'y a rien d'autre de figé, sinon GLISS (morphing)
         bool others = false;
         for (int i = 0; i < kVoices; ++i)
@@ -257,6 +273,7 @@ private:
     {
         const float hopSec = (float) hop / (float) sr;
         int active = 0;
+        float sumEg2 = 0.0f, pRef = 0.0f;
         for (auto& v : voices)
         {
             if (!v.used) continue;
@@ -264,11 +281,17 @@ private:
             const float step = hopSec / std::max (0.02f, v.fadeTime);
             if (v.gain < v.target) v.gain = std::min (v.target, v.gain + step);
             else if (v.gain > v.target) v.gain = std::max (v.target, v.gain - step);
-            if (v.target <= 0.0f && v.gain <= 0.0f) { v.used = false; continue; }
+            if (v.target <= 0.0f && v.gain <= 0.0f) { v.used = false; v.eg = 0.0f; continue; }
             ++active;
+            // fondu à puissance constante : deux captures qui se relaient ne creusent plus le niveau
+            v.eg = std::sin (0.5f * kPi * clampf (v.gain, 0.0f, 1.0f));
+            sumEg2 += v.eg * v.eg;
+            pRef += v.eg * v.eg * v.rms2;
         }
-        if (active == 0) return;
-        const float norm = synthGain / std::sqrt ((float) std::max (1, active));
+        if (active == 0) { powerHist[(size_t) histIdx] = 0.0f; histIdx = (histIdx + 1) & 3; levelPrev = levelNext; levelNext += 0.35f * (1.0f - levelNext); return; }
+        const float denom = std::max (1.0f, sumEg2);
+        const float norm = synthGain / std::sqrt (denom);
+        pRef /= denom;       // puissance visée : celle du son capturé (plusieurs couches : moyenne)
 
         for (int c = 0; c < 2; ++c)
         {
@@ -276,10 +299,10 @@ private:
             std::fill (work.begin(), work.end(), std::complex<float> (0, 0));
             for (auto& v : voices)
             {
-                if (!v.used || v.gain <= 0.0f) continue;
+                if (!v.used || v.eg <= 0.0f) continue;
                 any = true;
                 // vérifie qu'on accumule dans le domaine fréquentiel : un seul IFFT pour toutes les voix
-                const float g = v.gain * norm;
+                const float g = v.eg * norm;
                 for (int k = 0; k < bins; ++k)
                 {
                     float ph = v.phase[c][(size_t) k] + v.adv[c][(size_t) k] + 0.02f * rng[c].bi();
@@ -302,6 +325,25 @@ private:
                 outRing[c][(size_t) o] += work[(size_t) i].real() * win[(size_t) i];
             }
         }
+
+        // Correction de niveau : la resynthèse spectrale perd ~3 dB sur les sons denses (bruit, reverb, accords riches)
+        // par rapport aux sons purs. Les `hop` prochains échantillons sont définitifs : on compare leur puissance
+        // à celle du son capturé et on ajuste le gain de sortie (lissé, borné) pour que le son figé garde le niveau de la capture.
+        powerHist[(size_t) histIdx] = pRef;
+        histIdx = (histIdx + 1) & 3;
+        float y2 = 0.0f;
+        for (int i = 0; i < hop; ++i)
+        {
+            const int o = (outPos + i) % N;
+            y2 += outRing[0][(size_t) o] * outRing[0][(size_t) o] + outRing[1][(size_t) o] * outRing[1][(size_t) o];
+        }
+        y2 /= (float) (2 * hop);
+        float pAvg = 0.0f; bool steady = true;
+        for (float h : powerHist) { pAvg += 0.25f * h; if (h <= 1.0e-12f) steady = false; }
+        float target = 1.0f;
+        if (steady && y2 > 1.0e-14f) target = clampf (std::sqrt (pAvg / y2), 0.7f, 2.2f);
+        levelPrev = levelNext;
+        levelNext += 0.35f * (target - levelNext);
     }
 
     double sr = 48000.0;
@@ -317,6 +359,10 @@ private:
     int holdVoice = -1, lastCaptured = -1, refreshCountdown = 0;
     int autoCountdown = -1, sinceAuto = 1 << 30;
     float autoEnv = 0, autoSlow = 0, synthGain = 1.0f;
+    float lastFrameEnergy = 0.0f, winEnergy = 1.0f;
+    float powerHist[4] = { 0, 0, 0, 0 };
+    int histIdx = 0;
+    float levelPrev = 1.0f, levelNext = 1.0f;
     Rng rng[2];
 };
 } // namespace fs

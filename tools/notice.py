@@ -4,7 +4,7 @@
 # La capture des menus du clic droit de la v1.2.0 (« Window size », « Reset MIDI to defaults (CC ...) ») a ete retiree :
 # elle montrait l'ancien menu et le depot n'a pas d'outil de rendu (tools/render) pour la refaire.
 # Polices : assets/fonts (Poppins + DejaVuSans pour les fleches). Code compile : Source/ (les copies a la racine ne servent plus).
-# Contenu verifie contre Source/PluginEditor.cpp / Source/PluginProcessor.cpp (v1.5.2). Pas d'historique des versions dans le PDF.
+# Contenu verifie contre Source/PluginEditor.cpp / Source/PluginProcessor.cpp (v1.5.3). Pas d'historique des versions dans le PDF.
 import os, sys
 from PIL import Image
 from reportlab.lib.pagesizes import A4
@@ -18,8 +18,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "docs", "FreezeShimmer_Notice_FR_v1.5.2.pdf")
-VERSION = "1.5.2"
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "docs", "FreezeShimmer_Notice_FR_v1.5.3.pdf")
+VERSION = "1.5.3"
 FONTS = os.path.join(ROOT, "assets", "fonts")
 A = os.path.join(ROOT, "tools", "manual_assets")
 
@@ -104,7 +104,7 @@ T = {
  md=[["Clic", "Scène suivante"], ["Maj + clic", "Mode de freeze suivant (LATCH · MOMENT · AUTO)"], ["Maintien environ 1 s", "Bascule page A / B"],
      ["Molette (sur la LED)", "Preset d'usine précédent / suivant"], ["Clic droit", "MIDI Learn de SCENE et FREEZE MODE, puis le menu complet"]],
  fz_t="5. Freeze et footswitch",
- fz_intro="Le moteur de freeze est un freeze spectral à vocodeur de phase (FFT 4096) : il garde la magnitude et l'avance de phase de chaque bande, donc un accord figé garde sa hauteur.",
+ fz_intro="Le moteur de freeze est un freeze spectral à vocodeur de phase (FFT 4096) : il garde la magnitude et l'avance de phase de chaque bande, donc un accord figé garde sa hauteur. Le niveau du son figé est recalé en continu sur celui du son au moment de la capture : il ne s'affaiblit pas, même sur un son dense (reverb, accord riche).",
  fz_hdr=["Mode", "Comportement"],
  fz=[["LATCH (par défaut)", "Maintiens le footswitch : le plugin capture ce qu'il entend. Relâche : le son est tenu à l'infini, joue par-dessus. Double-clic : le freeze s'éteint en fondu (durée SPEED). Chaque nouvelle capture ajoute une couche (jusqu'à LAYER) ou glisse vers le nouveau son (GLISS)."],
      ["MOMENT", "Le son n'est figé que tant que le footswitch est maintenu."],

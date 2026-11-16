@@ -158,12 +158,44 @@ int main (int argc, char** argv)
         const float rStop = rms (oL, (size_t) (9.0 * sr), (size_t) (10.0 * sr));
         printf ("  hold: RMS jeu %.3f | figé après relâche %.3f | fin %.3f | après stop %.5f\n", rIn, rHold, rLate, rStop);
         check (rHold > 0.5f * rIn, "relâche du footswitch : le freeze est maintenu (entrée silencieuse)");
+        check (std::abs (20.0f * std::log10 (rHold / rIn)) < 2.0f, "le son figé garde le niveau de la capture (accord, +-2 dB)");
         check (std::abs (rLate - rHold) < 0.25f * rHold, "le freeze maintenu reste stable dans la durée");
         check (rStop < 0.002f, "double-clic (release) : le freeze s'arrête");
         const float f0 = domFreq (oL, (size_t) (4 * sr), sr);
         check (std::abs (f0 - 220.0f) < 6.0f || std::abs (f0 - 277.18f) < 6.0f || std::abs (f0 - 329.63f) < 6.0f, "accord figé à la bonne hauteur");
         // jouer par-dessus : l'entrée continue de passer indépendamment (le moteur ne la modifie pas)
         writeWav (wav ("freeze_hold_release.wav").c_str(), oL, oR, sr);
+    }
+
+    // ---------- 3b. FREEZE : niveau conservé sur un son dense (bruit filtré + tons), maintien long ou court ----------
+    for (float holdSec : { 0.15f, 1.0f })
+    {
+        fs::FreezeEngine fz; fz.prepare (sr);
+        fs::FreezeParams p; p.mode = fs::FreezeMode::latch; p.speed = 0.3f; p.layer = 0.3f; p.gliss = 0.2f;
+        fz.setParams (p);
+        const int total = sr * 6;
+        std::vector<float> in ((size_t) total), oL ((size_t) total), oR ((size_t) total);
+        unsigned seed = 12345u; float lp = 0.0f;
+        for (int i = 0; i < total; ++i)
+        {
+            seed = seed * 1664525u + 1013904223u;
+            const float nz = ((float) (seed >> 8) / 8388608.0f - 1.0f) * 1.7f;
+            lp += 0.25f * (nz - lp);
+            const float t = (float) i / sr;
+            in[(size_t) i] = 0.1f * std::sin (fs::kTwoPi * 196.0f * t) + 0.06f * std::sin (fs::kTwoPi * 392.7f * t) + 0.12f * lp;
+        }
+        const int rel = (int) ((0.5f + holdSec) * sr);
+        for (int i = 0; i < total; i += 64)
+        {
+            if (i == (int) (0.5 * sr)) fz.holdPress();
+            if (i <= rel && rel < i + 64) fz.holdRelease();
+            fz.process (&in[(size_t) i], &in[(size_t) i], &oL[(size_t) i], &oR[(size_t) i], 64);
+        }
+        const float rIn = rms (in, (size_t) (0.4 * sr), (size_t) (0.5 * sr));
+        const float rFz = rms (oL, (size_t) (3.0 * sr), (size_t) (5.5 * sr));
+        const float dB  = 20.0f * std::log10 (rFz / rIn);
+        printf ("  niveau dense (maintien %.2f s): figé %.1f dB par rapport à l'entrée\n", holdSec, dB);
+        check (std::abs (dB) < 1.5f, "son dense : le son figé garde le niveau de la capture (+-1,5 dB)");
     }
 
     // ---------- 4. SHIMMER : sensibilité de chaque potard ----------
