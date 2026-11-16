@@ -493,31 +493,38 @@ PopupMenu FreezeShimmerEditor::buildContextMenu (int learnIdx)
     addHeader (m, menuLnf.f, icoPedal, ::kAccent, "Freeze Shimmer", "Reverb  v" + String (JucePlugin_VersionString));
     PopupMenu presets, scenes, modes;
     for (int i = 0; i < fsp::kNumPresets; ++i)
-        presets.addItem (200 + i, String (i + 1) + ". " + niceName (fsp::kPresets[i].name), true, proc.presetIndex.load() == i && userSlot == 0);
+        NineHandsMenu::addItem (presets, 200 + i, String (i + 1) + ". " + niceName (fsp::kPresets[i].name), icoDot, true, proc.presetIndex.load() == i && userSlot == 0);
     m.addSubMenu ("Factory presets", presets);
     NineHandsUserPresets::addMenus (m, "Freeze Shimmer", 400, 500, userSlot);
     m.addSeparator();
-    for (int i = 0; i < 3; ++i) scenes.addItem (1 + i, fsp::kSceneNames[i], true, choice ("scene") == i);
-    for (int i = 0; i < 3; ++i) modes.addItem (11 + i, fsp::kModeNames[i], true, choice ("fmode") == i);
-    m.addSubMenu ("Scene (shimmer)", scenes);
-    m.addSubMenu ("Mode freeze", modes);
-    m.addItem (21, "Knobs: page A (primary)", true, page() == 0);
-    m.addItem (22, "Knobs: page B (secondary, blue)", true, page() == 1);
-    m.addItem (30, "Effect on (bypass when unticked)", true, getBool ("engage"));
-    m.addItem (31, "Stop the freeze (or double-click footswitch)");
+    auto cap = [] (const String& n) { return n.substring (0, 1) + n.substring (1).toLowerCase(); };
+    for (int i = 0; i < 3; ++i) scenes.addItem (1 + i, cap (fsp::kSceneNames[i]), true, choice ("scene") == i);
+    for (int i = 0; i < 3; ++i) modes.addItem (11 + i, cap (fsp::kModeNames[i]), true, choice ("fmode") == i);
+    PopupMenu settings;
+    settings.addSectionHeader ("Mode");
+    settings.addSubMenu ("Freeze mode", modes);
+    settings.addSubMenu ("Scene (shimmer)", scenes);
+    settings.addSeparator();
+    settings.addSectionHeader ("navigation");
+    settings.addItem (21, "Knobs: page A (primary)", true, page() == 0);
+    settings.addItem (22, "Knobs: page B (secondary)", true, page() == 1);
+    settings.addItem (31, "Stop the freeze (or double-click footswitch)");
+    m.addSubMenu ("Settings", settings);
     m.addSeparator();
 
     PopupMenu midi;
     midi.addSectionHeader ("MIDI Learn");
-    for (int i = 0; i < FreezeShimmerProcessor::kNumLearn; ++i)
-        midi.addItem (1000 + i, "Learn: " + String (FreezeShimmerProcessor::learnDef (i).name) + "  (" + ccText (i) + ")", true, lt == i);
+    for (int i : { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 15 })
+    {
+        const String n (FreezeShimmerProcessor::learnDef (i).name);
+        const String label = n == "RVB MIX" ? String ("RVB Mix") : n.substring (0, 1) + n.substring (1).toLowerCase();
+        NineHandsMenu::addItem (midi, 1000 + i, "Learn: " + label + " (" + ccText (i) + ")", i == 15 ? icoSwitch : icoMidi, true, lt == i);
+    }
     midi.addSeparator();
     midi.addItem (1200, "Cancel MIDI learn", lt >= 0);
     midi.addItem (1201, "Clear all MIDI assignments");
     midi.addSeparator();
     NineHandsWindow::addMidiFootswitchMode (midi, ! proc.midiFsMomentary.load());
-    midi.addSeparator();
-    NineHandsWindow::addProgramChangeInfo (midi);
     m.addSubMenu ("MIDI", midi);
     m.addSeparator();
 

@@ -168,11 +168,7 @@ void FreezeShimmerProcessor::handleMidi (juce::MidiBuffer& midi)
         const auto m = meta.getMessage();
         if (chanSel != 0 && m.getChannel() != chanSel) continue;
 
-        if (m.isProgramChange())
-        {
-            pendingPreset.store (m.getProgramChangeNumber() % fsp::kNumPresets);   // chargé par le timer
-            continue;
-        }
+        if (m.isProgramChange()) continue;           // Program Change ignore (menu final)
         if (! m.isController()) continue;
 
         const int cc = m.getControllerNumber(), val = m.getControllerValue();
